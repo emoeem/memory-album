@@ -47,6 +47,8 @@ export function mount(app, data, ROOT) {
   const openButton = $('#open');
   const endingSection = $('#ending');
   const rainLayer = $('.rain');
+  const weatherValue = $('.sky__weather-value');
+  const weatherLabel = $('.sky__weather-label');
 
   document.body.classList.add('is-locked');
 
@@ -239,6 +241,8 @@ export function mount(app, data, ROOT) {
         if (Math.abs(sun - lastSun) > 0.004) {
           lastSun = sun;
           doc.style.setProperty('--sun', sun.toFixed(3));
+          weatherValue && (weatherValue.textContent = sun < .28 ? '雨中' : sun < .68 ? '云隙' : '放晴');
+          weatherLabel && (weatherLabel.textContent = sun < .68 ? 'RAIN' : 'CLEAR');
           rainLayer?.classList.toggle('is-stopped', sun > 0.99);
         }
       }

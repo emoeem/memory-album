@@ -50,8 +50,17 @@ export function buildSky() {
     <div class="sky__clouds sky__clouds--near"></div>
     <div class="sky__sun-disc"></div>
     <div class="sky__sun-rays"></div>
-    <div class="rain"></div>
+    <div class="rain">
+      <div class="rain__foreground"></div>
+      <div class="rain__mist"></div>
+      <div class="rain__puddle"></div>
+    </div>
     <div class="sky__horizon"></div>
+    <div class="sky__weather" aria-hidden="true">
+      <span class="sky__weather-dot"></span>
+      <span class="sky__weather-label">RAIN</span>
+      <span class="sky__weather-value">雨中</span>
+    </div>
     <div class="sky__grain"></div>
   </div>`;
 }

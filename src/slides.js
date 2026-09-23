@@ -43,9 +43,11 @@ function buildSlides(data) {
       return;
     }
     (chapter.nodes || []).forEach((node) => {
-      if (node.images?.length) slides.push({ kind: 'image', node, chapter });
+      const hasImages = Boolean(node.images?.filter(Boolean).length);
       const hasText = Boolean(node.title || node.quote || node.lines?.length || node.text);
-      if (hasText) slides.push({ kind: 'text', node, chapter });
+      if (hasImages && hasText) slides.push({ kind: 'memory', node, chapter });
+      else if (hasImages) slides.push({ kind: 'image', node, chapter });
+      else if (hasText) slides.push({ kind: 'text', node, chapter });
     });
   });
   if (data.ending) slides.push({ kind: 'ending', ending: data.ending });
@@ -61,7 +63,7 @@ export function mountSlides(app, data, ROOT) {
   });
 
   const slides = buildSlides(data);
-  const timing = { ...DEFAULT_TIMING, ...(data.timing || {}) };
+  const timing = { ...DEFAULT_TIMING, memory: DEFAULT_TIMING.image, ...(data.timing || {}) };
   const total = slides.length;
 
   document.body.classList.add('mode-slides');
@@ -85,6 +87,8 @@ export function mountSlides(app, data, ROOT) {
   const toggleButton = $('#deck-toggle');
   const lightbox = setupLightbox(app);
   const music = $('#deck-music');
+  const weatherValue = $('.sky__weather-value');
+  const weatherLabel = $('.sky__weather-label');
 
   let index = -1;
   let playing = false;
@@ -165,7 +169,10 @@ export function mountSlides(app, data, ROOT) {
     // 最后那一段雨慢慢停、天色慢慢暖
     const start = total * 0.68;
     const span = Math.max(1, total * 0.24);
-    setSun(document.documentElement, (index - start) / span);
+    const sun = Math.min(1, Math.max(0, (index - start) / span));
+    setSun(document.documentElement, sun);
+    if (weatherValue) weatherValue.textContent = sun < .28 ? '雨中' : sun < .68 ? '云隙' : '放晴';
+    if (weatherLabel) weatherLabel.textContent = sun < .68 ? 'RAIN' : 'CLEAR';
   }
 
   function updateDeck() {
@@ -384,24 +391,41 @@ function renderSlide(slide, asset, i) {
         </div>
       </section>`;
 
-    case 'image': {
-      const images = slide.node.images.filter(Boolean);
+    case 'image':
+    case 'memory': {
+      const node = slide.node;
+      const images = node.images.filter(Boolean).slice(0, 5);
+      const count = images.length;
+      const lines = node.lines || (node.text ? [node.text] : []);
+      const kind = slide.kind === 'memory' ? ' memory--with-text' : '';
       return `
       <section ${head}>
-        <div class="slide__inner slide__inner--center">
-          <figure class="slide__media${images.length > 1 ? ' slide__media--multi' : ''}">
+        <div class="slide__inner slide__inner--center memory${kind}">
+          <figure class="slide__media memory__media memory__media--${Math.min(count, 5)}">
             ${images
-              .map((src) => {
+              .map((src, n) => {
                 const size = photoSizes[src];
-                return `<img class="slide__img" data-src="${esc(asset(src))}" alt="${esc(
-                  slide.node.title || '',
+                return `<img class="slide__img memory__img memory__img--${n + 1}" style="--photo-i:${n}" data-src="${esc(asset(src))}" alt="${esc(
+                  node.title || '',
                 )}" ${size ? `width="${size[0]}" height="${size[1]}"` : ''} decoding="async" />`;
               })
               .join('')}
           </figure>
+          ${slide.kind === 'memory' ? `
+            <div class="memory__copy">
+              <p class="slide__meta">
+                ${node.date ? `<time>${esc(node.date)}</time>` : ''}
+                ${node.place ? `<span>${esc(node.place)}</span>` : ''}
+              </p>
+              ${node.title ? `<h3 class="slide__head">${esc(node.title)}</h3>` : ''}
+              <div class="slide__lines">
+                ${lines.map((line, n) => `<p class="slide__line" style="--i:${n}">${richInline(line)}</p>`).join('')}
+              </div>
+              ${node.quote ? `<blockquote class="slide__quote">${richInline(node.quote)}</blockquote>` : ''}
+            </div>` : ''}
           <p class="slide__caption">
-            ${slide.node.date ? `<time>${esc(slide.node.date)}</time>` : ''}
-            ${slide.node.place ? `<span>${esc(slide.node.place)}</span>` : ''}
+            ${node.date ? `<time>${esc(node.date)}</time>` : ''}
+            ${node.place ? `<span>${esc(node.place)}</span>` : ''}
           </p>
         </div>
       </section>`;
@@ -496,6 +520,7 @@ function renderSlide(slide, asset, i) {
       <section ${head}>
         <div class="slide__inner slide__inner--center">
           ${ending.title ? `<h2 class="slide__title slide__title--small">${esc(ending.title)}</h2>` : ''}
+          ${ending.images?.length ? `<div class="ending__photos" aria-label="回忆拼贴">${ending.images.map((src, n) => `<img class="ending__photo ending__photo--${n + 1}" src="${esc(asset(src))}" alt="" loading="lazy" decoding="async" />`).join('')}</div>` : ''}
           <div class="ending__body">
             ${(ending.paragraphs || []).map((p) => `<p>${richInline(p)}</p>`).join('')}
           </div>

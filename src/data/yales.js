@@ -57,7 +57,7 @@ export default {
       id: 'begin',
       label: '开始',
       date: '2026 春',
-      intro: '一开始谁也没想到会走这么远。',
+      intro: '一开始谁也没想到会走这么远。后来回头看，才发现很多小事已经变成了记忆。',
       nodes: [
         {
           id: 'n01',
@@ -73,6 +73,14 @@ export default {
           images: ['photos/yales/p02.webp', 'photos/yales/p03.webp'],
         },
       ],
+    },
+
+    {
+      kind: 'interlude',
+      id: 'rain',
+      label: '下雨的时候',
+      date: '',
+      lines: ['我喜欢《天气之子》里的雨，', '也喜欢雨里的那些安静时刻。'],
     },
 
     {
@@ -97,6 +105,29 @@ export default {
     },
 
     {
+      kind: 'chat',
+      id: 'c2',
+      label: '如果今天有点累',
+      date: '',
+      bubbles: [
+        { side: 'you', text: '如果今天有点累怎么办' },
+        { side: 'me', text: '那就先什么都别想' },
+        { side: 'me', text: '去吹吹风，听听歌，等心情慢一点' },
+        { side: 'you', text: '然后呢' },
+        { side: 'me', text: '然后抬头看看天。晴天也好，雨天也好，都算今天。' },
+      ],
+      sendLabel: '写给你',
+    },
+
+    {
+      kind: 'interlude',
+      id: 'blessing-1',
+      label: '想送给你的话',
+      date: '',
+      lines: ['愿你以后遇见的每一天，', '都有一点值得开心的小事。'],
+    },
+
+    {
       id: 'walking',
       label: '一起走过',
       date: '2026 夏',
@@ -105,14 +136,14 @@ export default {
         {
           id: 'n03',
           date: '那个夏天',
-          lines: ['我们开始互相丢歌。', '你说这首听完会想起我。'],
+          lines: ['你会把喜欢的歌分享给我。', '也会顺手把一天里的小事发过来。'],
           images: ['photos/yales/p04.webp'],
         },
         {
           id: 'n04',
           date: '后来',
-          lines: ['也有过一句话都不说的时候。', '但你知道我在，我知道你在。'],
-          images: ['photos/yales/p05.webp', 'photos/yales/p06.webp'],
+          lines: ['也有过一句话都不说的时候。', '但你还是会把日常一点点分享给我。'],
+          images: ['photos/yales/p05.webp', 'photos/yales/p06.webp', 'photos/yales/p07.webp'],
         },
       ],
     },
@@ -122,12 +153,12 @@ export default {
       id: 'songs',
       label: '一起听过的歌',
       date: '2026 春夏',
-      intro: '有些歌现在一响，我就知道是你发来的。',
+      intro: '有些歌，是你分享给我的。后来再听见，我会想起你把它发过来的那个瞬间。',
       items: [
         {
           name: 'グランドエスケープ',
           artist: 'RADWIMPS',
-          note: '你说这是你最喜欢那部电影里最喜欢的一首。所以这份东西也用这首。',
+          note: '你喜欢《天气之子》，也把这首歌分享给我。所以我把它留在这里，陪你看到最后。',
         },
         {
           name: '无尽幸福',
@@ -139,37 +170,37 @@ export default {
 
     {
       id: 'chat',
-      label: '聊天记录',
+      label: '你的日常',
       date: '2026 夏',
-      intro: '这些截图我一直留着。',
+      intro: '你会把一天里遇到的小事、看到的东西、突然想到的话，分享给我。',
       nodes: [
         {
           id: 'n05',
           date: '那天',
-          place: '聊天记录',
-          lines: ['你截了好多图给我看。', '现在翻回去，还是会笑。'],
-          images: ['photos/yales/p07.webp', 'photos/yales/p08.webp'],
+          place: '日常',
+          lines: ['有时候是一张照片，有时候只是一句话。', '你把普通的一天，也分了一点给我。'],
+          images: ['photos/yales/p08.webp'],
         },
         {
           id: 'n06',
           date: '那天晚上',
-          place: '聊天记录',
-          lines: ['你说「我能有什么好看的」。'],
-          quote: '你就很好看啊。',
+          place: '日常',
+          lines: ['你发来的那些碎碎念，我后来才发现，已经悄悄堆成了很多记忆。'],
+          quote: '原来被你分享进日常，也是一件很幸福的事。',
           images: ['photos/yales/p09.webp', 'photos/yales/p10.webp'],
         },
         {
           id: 'n07',
           date: '六月',
           place: '聊天记录',
-          lines: ['有时候一句「在吗」就够了。'],
+          lines: ['有时候你只是顺手发来一张照片。', '我却会认真看很久。'],
           images: ['photos/yales/p11.webp', 'photos/yales/p12.webp'],
         },
         {
           id: 'n08',
           date: '某天',
           place: '聊天记录',
-          lines: ['有些对话我现在还舍不得删。'],
+          lines: ['你分享给我的，不一定是什么特别的日子。', '可我很喜欢这些普通的日常。'],
           images: ['photos/yales/p13.webp'],
         },
       ],
@@ -180,7 +211,30 @@ export default {
       id: 'i2',
       label: '插句',
       date: '',
-      lines: ['有些话我到现在也没跟你说过。'],
+      lines: ['有些话我到现在也没跟你说过。', '所以想把它们藏在这一页里，慢慢给你看。'],
+    },
+
+    {
+      kind: 'chat',
+      id: 'c3',
+      label: '关于以后',
+      date: '',
+      bubbles: [
+        { side: 'me', text: '以后也要好好生活' },
+        { side: 'you', text: '知道啦' },
+        { side: 'me', text: '遇到不开心的事情也不要一个人憋着' },
+        { side: 'you', text: '那开心的呢' },
+        { side: 'me', text: '开心的更要告诉我。我要听。' },
+      ],
+      sendLabel: '未完待续',
+    },
+
+    {
+      kind: 'interlude',
+      id: 'blessing-2',
+      label: '愿望',
+      date: '',
+      lines: ['愿你有很多很多晴天，', '也愿每一次下雨，都有人陪你等天晴。'],
     },
 
     {
@@ -210,7 +264,38 @@ export default {
       id: 'i3',
       label: '插句',
       date: '',
-      lines: ['然后就**慢慢**好起来了。'],
+      lines: ['然后就**慢慢**好起来了。', '不用急着放晴，慢一点，也没关系。'],
+    },
+
+    {
+      kind: 'interlude',
+      id: 'clear',
+      label: '雨停以后',
+      date: '',
+      lines: ['雨停以后，不是故事结束。', '是我们终于可以一起抬头看天。'],
+    },
+
+    {
+      kind: 'interlude',
+      id: 'blessing-3',
+      label: '中秋',
+      date: '2026',
+      lines: ['月亮会圆，雨也会停。', '愿你所盼的，都慢慢有回音。'],
+    },
+
+    {
+      kind: 'chat',
+      id: 'c4',
+      label: '最后一句',
+      date: '',
+      bubbles: [
+        { side: 'you', text: '这份回忆录到底想说什么' },
+        { side: 'me', text: '没什么大道理' },
+        { side: 'me', text: '就是希望你打开它的时候，刚好心情很好' },
+        { side: 'you', text: '如果我今天心情不好呢' },
+        { side: 'me', text: '那就多看一会儿。雨会停的。' },
+      ],
+      sendLabel: '送给你',
     },
 
     {
@@ -238,9 +323,16 @@ export default {
   ending: {
     title: '给你的话',
     paragraphs: [
-      '谢谢你陪我走过这一段。',
-      '你喜欢《天气之子》，喜欢雨停下来那一下。我想跟你说的是——难的那阵子你都熬过来了，后面的晴天是你自己等来的。',
-      '接下来的路不用急，慢慢来也没关系。**我会一直在。**',
+      '谢谢你愿意把那些小小的日常，一点一点分享给我。',
+      '有些只是照片，有些只是随手发来的一句话，可它们最后都留在了这里。你喜欢《天气之子》，所以我也想借它的雨和晴天，认真祝你一次。',
+      '接下来的路不用急，慢慢来也没关系。每天开心，照顾好自己，按时吃饭，好好睡觉。**愿你一直有值得分享的日常，也一直有人认真听。**',
+    ],
+    images: [
+      'photos/yales/p03.webp',
+      'photos/yales/p06.webp',
+      'photos/yales/p10.webp',
+      'photos/yales/p15.webp',
+      'photos/yales/p18.webp',
     ],
     sign: '你的朋友',
     date: '2026 中秋',
