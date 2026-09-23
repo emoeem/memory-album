@@ -1,5 +1,6 @@
 import { albums } from './data/index.js';
 import { mount } from './album.js';
+import { mountSlides } from './slides.js';
 
 const ROOT = new URL('../', import.meta.url);
 const app = document.getElementById('app');
@@ -73,7 +74,12 @@ async function boot() {
     const data = mod.default;
     document.documentElement.dataset.slug = data.slug || slug;
     // 挂到 window 上方便本机调试（也方便检查脚本读播放状态）
-    window.__memoryAlbum = mount(app, data, ROOT);
+    // presentation 决定走哪套：'slides' 单屏自动播（默认） / 'scroll' 往下滚
+    // 链接上加 ?mode=scroll 可以临时切回去看
+    const override = new URLSearchParams(window.location.search).get('mode');
+    const render =
+      (override || data.presentation) === 'scroll' ? mount : mountSlides;
+    window.__memoryAlbum = render(app, data, ROOT);
     setMeta(data);
   } catch (error) {
     console.error(error);

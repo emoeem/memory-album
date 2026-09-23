@@ -20,6 +20,21 @@
 export default {
   slug: 'yales',
 
+  // 'slides'（默认）单屏自动播，一屏一幕；'scroll' 往下滚。
+  // 本机想对比：链接后面加 ?mode=scroll
+  presentation: 'slides',
+
+  // 每一幕停多久（毫秒）。想让她多看一会儿截图就把 image 调大。
+  timing: {
+    chapter: 3800,
+    image: 8000,
+    text: 5600,
+    interlude: 4800,
+    chat: 8000,
+    songs: 11000,
+    ending: 16000,
+  },
+
   name: 'Yales',
   cover: {
     kicker: '这是给你的',

@@ -660,7 +660,7 @@ button {
   transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
 }
 
-.chatscene.is-in .bubble {
+.is-in .bubble {
   opacity: 1;
   transform: none;
 }
@@ -714,7 +714,7 @@ button {
   transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
 }
 
-.chatscene.is-sent .chatscene__send {
+.is-sent .chatscene__send {
   opacity: 1;
   transform: none;
 }
@@ -1177,6 +1177,330 @@ button {
 }
 
 /* ------------------------------------------------------------ 无障碍 */
+
+/* ==================================================================
+   单屏自动播模式（presentation: 'slides'，默认）
+   一屏一幕，自己往下推；不滚动。想停就停，想翻就翻。
+   ================================================================== */
+
+body.mode-slides {
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 44px) var(--gutter)
+    calc(env(safe-area-inset-bottom, 0px) + 104px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(18px);
+  transition: opacity 0.95s var(--ease), transform 0.95s var(--ease),
+    visibility 0s linear 0.95s;
+}
+
+.slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.95s var(--ease), transform 0.95s var(--ease),
+    visibility 0s linear 0s;
+}
+
+.slide__inner {
+  width: 100%;
+  max-width: 780px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 16px;
+  text-align: center;
+}
+
+/* --- 章节页 --- */
+
+.slide__title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(34px, 8.5vw, 62px);
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+}
+
+.slide__title--small {
+  font-size: clamp(26px, 6vw, 42px);
+}
+
+.slide__date,
+.slide__meta {
+  margin: 0;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--ink-mute);
+}
+
+.slide__meta time,
+.slide__caption time {
+  color: var(--accent);
+}
+
+.slide__intro {
+  margin: 0;
+  max-width: 24em;
+  font-family: var(--serif);
+  font-size: clamp(15px, 4vw, 19px);
+  line-height: 2;
+  color: var(--ink-soft);
+}
+
+/* --- 图片页 --- */
+
+.slide__media {
+  margin: 0;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.slide__media--multi {
+  grid-auto-flow: column;
+  gap: 16px;
+}
+
+.slide__img {
+  width: auto;
+  max-width: 100%;
+  max-height: 60svh;
+  border-radius: 12px;
+  border: 1px solid rgba(174, 208, 240, 0.16);
+  box-shadow: 0 30px 70px rgba(4, 10, 20, 0.55);
+  background: var(--bg-soft);
+  cursor: zoom-in;
+}
+
+.slide__media--multi .slide__img {
+  max-height: 50svh;
+}
+
+.slide__caption {
+  margin: 0;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: var(--ink-mute);
+}
+
+/* --- 文字页 --- */
+
+.slide__head {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(21px, 5vw, 30px);
+  letter-spacing: 0.03em;
+}
+
+.slide__lines {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.slide__line {
+  margin: 0;
+  max-width: 24em;
+  font-family: var(--serif);
+  font-size: clamp(19px, 5vw, 27px);
+  line-height: 1.95;
+  letter-spacing: 0.03em;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+  transition-delay: calc(var(--i, 0) * 0.3s + 0.15s);
+}
+
+.slide.is-in .slide__line {
+  opacity: 1;
+  transform: none;
+}
+
+.slide__quote {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-size: clamp(17px, 4.4vw, 23px);
+  line-height: 1.9;
+  color: var(--accent);
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.9s var(--ease) 0.75s, transform 0.9s var(--ease) 0.75s;
+}
+
+.slide.is-in .slide__quote {
+  opacity: 1;
+  transform: none;
+}
+
+.slide .songs__list {
+  width: 100%;
+  max-width: 620px;
+  text-align: left;
+}
+
+@media (min-width: 900px) {
+  .slide__img {
+    max-height: 68svh;
+  }
+
+  .slide__media--multi .slide__img {
+    max-height: 58svh;
+  }
+}
+
+/* --- 控制条 --- */
+
+.deck {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  padding: 0 var(--gutter) calc(env(safe-area-inset-bottom, 0px) + 12px);
+  background: linear-gradient(0deg, rgba(10, 21, 38, 0.94), rgba(10, 21, 38, 0));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s var(--ease);
+}
+
+body.is-open .deck {
+  opacity: 1;
+}
+
+.deck__bar {
+  height: 2px;
+  margin-bottom: 12px;
+  background: rgba(174, 208, 240, 0.12);
+}
+
+.deck__bar span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.6s linear;
+}
+
+.deck__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.deck__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--ink-mute);
+}
+
+.deck__counter {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--ink-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.deck__buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deck__button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(16, 29, 51, 0.72);
+  backdrop-filter: blur(10px);
+  color: var(--ink-soft);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+
+.deck__button:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.deck__button--play {
+  width: 46px;
+  height: 46px;
+}
+
+.deck__pause {
+  display: block;
+  width: 11px;
+  height: 12px;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.deck__button.is-paused .deck__pause {
+  width: 0;
+  height: 0;
+  border: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 10px solid currentColor;
+}
+
+.deck__replay {
+  margin-top: 22px;
+  padding: 10px 26px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(16, 29, 51, 0.7);
+  color: var(--ink);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  cursor: pointer;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+
+.deck__replay:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   *,

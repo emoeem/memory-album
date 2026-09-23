@@ -1,25 +1,27 @@
-/**
- * 用无头浏览器把页面在手机和桌面尺寸下跑一遍，检查布局和交互。
- *
- *   node scripts/dev.mjs &            # 先起服务
- *   node scripts/check-layout.mjs     # 再检查
- *
- * 会把截图存到 .checks/ 方便肉眼再看一遍。
- */
-import { mkdir, writeFile } from 'node:fs/promises';
+// 用无头浏览器把页面在手机 / 小屏 / 平板 / 桌面上各跑一遍。
+//
+//   node scripts/dev.mjs &
+//   node scripts/check-layout.mjs
+//   URL_BASE=http://127.0.0.1:5174/memory-album node scripts/check-layout.mjs
+//
+// 默认查单屏自动播那套（presentation: 'slides'），顺带烟测一下滚动那套。
+// 截图存到 .checks/，眼睛还能再看一遍。
+import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const OUT = join(ROOT, '.checks');
-const URL_BASE = process.env.URL_BASE || 'http://localhost:5173';
-const PLAYWRIGHT = process.env.PLAYWRIGHT_PATH || '/home/emo/code/telegram-bot/node_modules/playwright/index.js';
+const URL_BASE = process.env.URL_BASE || 'http://127.0.0.1:5173';
+const PLAYWRIGHT =
+  process.env.PLAYWRIGHT_PATH || '/home/emo/code/telegram-bot/node_modules/playwright/index.js';
 const CHROME =
   process.env.CHROME_PATH || '/home/emo/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
 
 const playwrightModule = await import(PLAYWRIGHT);
 const chromium = playwrightModule.chromium ?? playwrightModule.default?.chromium;
 if (!chromium) throw new Error(`找不到 chromium 导出: ${PLAYWRIGHT}`);
+
 await mkdir(OUT, { recursive: true });
 
 const VIEWPORTS = [
@@ -47,7 +49,6 @@ for (const viewport of VIEWPORTS) {
   });
   page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
   page.on('requestfailed', (req) => {
-    // 切页面时被中断的媒体请求不算问题
     const reason = req.failure()?.errorText || '';
     if (!reason.includes('ERR_ABORTED')) problems.push(`requestfailed: ${req.url()} (${reason})`);
   });
@@ -56,337 +57,266 @@ for (const viewport of VIEWPORTS) {
   });
 
   await page.goto(`${URL_BASE}/?u=yales`, { waitUntil: 'load' });
-  await page.waitForSelector('.node', { state: 'attached' });
+  await page.waitForSelector('.cover__title');
 
-  // 1. 封面阶段
+  /* ---------- 1. 封面 ---------- */
   const coverState = await page.evaluate(() => ({
-    coverVisible: Boolean(document.querySelector('.cover:not(.is-gone)')),
     title: document.querySelector('.cover__title')?.textContent?.trim(),
-    docWidth: document.documentElement.scrollWidth,
-    winWidth: window.innerWidth,
-    bodyLocked: document.body.classList.contains('is-locked'),
+    bodyBg: getComputedStyle(document.body).backgroundColor,
+    deckHidden: getComputedStyle(document.querySelector('.deck')).opacity === '0',
+    activeSlides: document.querySelectorAll('.slide.is-active').length,
   }));
-  if (!coverState.coverVisible) problems.push('封面没有出现');
-  if (coverState.docWidth > coverState.winWidth + 1) {
-    problems.push(`封面阶段横向溢出 ${coverState.docWidth} > ${coverState.winWidth}`);
-  }
+  if (!coverState.title) problems.push('封面没有渲染出名字');
+  if (coverState.bodyBg !== 'rgb(10, 21, 38)') problems.push(`样式没生效 (bg=${coverState.bodyBg})`);
+  if (coverState.activeSlides !== 0) problems.push('还没开始就有幕在显示了');
   await page.screenshot({ path: join(OUT, `${viewport.name}-1-cover.png`) });
 
-  // 2. 点开
+  /* ---------- 2. 点开始 ---------- */
   await page.click('#open');
-  await page.waitForTimeout(1600);
-  const afterOpen = await page.evaluate(() => ({
-    coverGone: document.querySelector('.cover')?.classList.contains('is-gone'),
-    pageVisible: document.querySelector('#page')?.getAttribute('aria-hidden'),
-    bodyLocked: document.body.classList.contains('is-locked'),
-    musicVisible: !document.querySelector('#music')?.hidden,
-    audioPlaying: Boolean(document.querySelector('#music') && !document.querySelector('#music').classList.contains('is-paused')),
-  }));
-  if (!afterOpen.coverGone) problems.push('点击后封面没有淡出');
-  if (afterOpen.pageVisible !== 'false') problems.push('点击后正文没有显示');
-  if (afterOpen.bodyLocked) problems.push('点击后页面仍然锁着滚动');
-  if (!afterOpen.musicVisible) problems.push('音乐按钮没有出现');
-  if (!afterOpen.audioPlaying) problems.push('音乐没有进入播放状态');
-  const audioState = await page.evaluate(() => {
-    const audio = window.__memoryAlbum?.audio;
-    const state = audio?.state?.();
-    if (!state) return null;
+  await page.waitForTimeout(2200);
+  const opened = await page.evaluate(() => {
+    const audio = window.__memoryAlbum?.audio?.state?.();
     return {
-      paused: state.paused,
-      time: state.time,
-      readyState: state.element?.readyState ?? -1,
-      duration: state.duration,
-      slot: state.slot,
-      crossfade: state.crossfade,
+      coverGone: document.querySelector('.cover')?.classList.contains('is-gone'),
+      deckVisible: getComputedStyle(document.querySelector('.deck')).opacity !== '0',
+      active: document.querySelectorAll('.slide.is-active').length,
+      audioPaused: audio?.paused,
+      audioDuration: audio?.duration,
+      hasGo: typeof window.__memoryAlbum?.go === 'function',
+      noScroll: getComputedStyle(document.body).overflow === 'hidden',
     };
   });
-  if (!audioState) problems.push('拿不到音频元素');
-  else {
-    if (audioState.paused) problems.push('音频处于暂停状态');
-    if (audioState.duration && Math.abs(audioState.duration - 308) > 3) {
-      problems.push(`音乐时长不对: ${audioState.duration}s`);
-    }
-    if (audioState.duration && audioState.time <= 0) problems.push('音乐播到了 0 秒');
+  if (!opened.coverGone) problems.push('点击后封面没有淡出');
+  if (!opened.deckVisible) problems.push('控制条没有出现');
+  if (opened.active !== 1) problems.push(`应该只有一幕在显示，现在有 ${opened.active}`);
+  if (opened.audioPaused) problems.push('音乐没有开始播');
+  if (opened.audioDuration && Math.abs(opened.audioDuration - 308) > 3) {
+    problems.push(`音乐时长不对: ${opened.audioDuration}s`);
   }
+  if (!opened.hasGo) problems.push('拿不到播放控制接口');
+  if (!opened.noScroll) problems.push('单屏模式下页面还能滚动');
+  await page.screenshot({ path: join(OUT, `${viewport.name}-2-first-slide.png`) });
 
-  // 歌曲短也没关系：快进到接缝处，应该自动交叉淡入淡出接到下一遍，不能断
-  const loopTest = await page.evaluate(async () => {
-    const audio = window.__memoryAlbum?.audio;
-    if (!audio) return null;
-    const before = audio.state();
-    audio.seek(before.duration - before.crossfade - 1);
-    await new Promise((r) => setTimeout(r, 4000));
-    const after = audio.state();
-    return {
-      slotBefore: before.slot,
-      slotAfter: after.slot,
-      paused: after.paused,
-      time: after.time,
-      volume: after.volume,
-    };
+  /* ---------- 3. 自动播 ---------- */
+  const before = await page.evaluate(() => window.__memoryAlbum.index ?? null);
+  await page.waitForTimeout(6500);
+  const auto = await page.evaluate(() => {
+    const active = document.querySelector('.slide.is-active');
+    return { index: Array.from(document.querySelectorAll('.slide')).indexOf(active) };
   });
-  if (!loopTest) problems.push('拿不到循环测试结果');
-  else {
-    if (loopTest.paused) problems.push('跨到下一遍之后音乐停了');
-    if (loopTest.slotBefore === loopTest.slotAfter) {
-      problems.push('接缝处没有做交叉淡入淡出');
-    }
-    if (loopTest.time > 20) {
-      problems.push(`接缝处没有从头接上 (${loopTest.time}s)`);
-    }
+  if (auto.index <= (before ?? -1)) {
+    problems.push(`没有自动往下播（停在 ${auto.index}）`);
   }
-  await page.screenshot({ path: join(OUT, `${viewport.name}-2-opened.png`) });
 
-  // 2.5 天气：开头在下雨，结尾放晴
-  const skyStart = await page.evaluate(() => ({
-    sun: getComputedStyle(document.documentElement).getPropertyValue('--sun').trim(),
-    rainOpacity: getComputedStyle(document.querySelector('.rain')).opacity,
-    hasSky: Boolean(document.querySelector('.sky')),
-    bodyBg: getComputedStyle(document.body).backgroundColor,
-  }));
-  if (!skyStart.hasSky) problems.push('没有天色/下雨那层');
-  if (Number(skyStart.sun) > 0.02) problems.push(`开头不该放晴 (--sun=${skyStart.sun})`);
-  if (Number(skyStart.rainOpacity) < 0.5) problems.push(`开头雨太小 (opacity=${skyStart.rainOpacity})`);
+  /* ---------- 4. 暂停 ---------- */
+  await page.click('#deck-toggle');
+  await page.waitForTimeout(300);
+  const pausedAt = await page.evaluate(() => {
+    const active = document.querySelector('.slide.is-active');
+    return Array.from(document.querySelectorAll('.slide')).indexOf(active);
+  });
+  await page.waitForTimeout(3500);
+  const stillAt = await page.evaluate(() => {
+    const active = document.querySelector('.slide.is-active');
+    return Array.from(document.querySelectorAll('.slide')).indexOf(active);
+  });
+  if (stillAt !== pausedAt) problems.push(`暂停之后还在自己翻（${pausedAt} → ${stillAt}）`);
 
-  // 3. 滚到底，边走边记录
-  const scrollReport = await page.evaluate(async () => {
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    const bad = [];
-    // 手机上 window.innerWidth 会因为内容超宽而变大，用视觉视口做基准才准
-    const vw = Math.round(window.visualViewport?.width ?? window.innerWidth);
-    const TOLERANCE = 3;
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    for (let y = 0; y <= max; y += Math.max(200, max / 24)) {
-      window.scrollTo(0, y);
-      await sleep(60);
-      if (document.documentElement.scrollWidth > vw + TOLERANCE) {
-        bad.push(
-          `scrollY=${Math.round(y)} 横向溢出 ${document.documentElement.scrollWidth}>${vw}`,
-        );
+  /* ---------- 5. 手动翻页 ---------- */
+  await page.click('#deck-next');
+  await page.waitForTimeout(400);
+  const afterNext = await page.evaluate(() => {
+    const active = document.querySelector('.slide.is-active');
+    return Array.from(document.querySelectorAll('.slide')).indexOf(active);
+  });
+  if (afterNext !== stillAt + 1) problems.push(`"下一幕"没生效（${stillAt} → ${afterNext}）`);
+  await page.click('#deck-prev');
+  await page.waitForTimeout(400);
+  const afterPrev = await page.evaluate(() => {
+    const active = document.querySelector('.slide.is-active');
+    return Array.from(document.querySelectorAll('.slide')).indexOf(active);
+  });
+  if (afterPrev !== stillAt) problems.push(`"上一幕"没生效（${afterNext} → ${afterPrev}）`);
+
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(350);
+  const afterKey = await page.evaluate(() => {
+    const active = document.querySelector('.slide.is-active');
+    return Array.from(document.querySelectorAll('.slide')).indexOf(active);
+  });
+  if (afterKey !== afterPrev + 1) problems.push('键盘右方向键没生效');
+
+  /* ---------- 6. 逐幕走一遍 ---------- */
+  const total = await page.evaluate(() => document.querySelectorAll('.slide').length);
+  const walk = [];
+  for (let i = 0; i < total; i += 1) {
+    await page.evaluate((n) => window.__memoryAlbum.go(n, { fromUser: true }), i);
+    await page.waitForTimeout(220);
+    const info = await page.evaluate(async () => {
+      const active = document.querySelector('.slide.is-active');
+      const vw = Math.round(window.visualViewport?.width ?? window.innerWidth);
+      const images = Array.from(active.querySelectorAll('.slide__img'));
+      if (images.length) {
+        await Promise.race([
+          Promise.all(images.map((img) => img.decode?.().catch(() => {}) ?? Promise.resolve())),
+          new Promise((r) => setTimeout(r, 2500)),
+        ]);
       }
-      const wide = Array.from(document.querySelectorAll('.node, .node__img, .chapter__head'))
-        .filter((el) => {
-          const r = el.getBoundingClientRect();
-          return r.width > vw + TOLERANCE || r.right > vw + TOLERANCE || r.left < -TOLERANCE;
-        })
-        .map((el) => `${el.className}: ${Math.round(el.getBoundingClientRect().left)}→${Math.round(el.getBoundingClientRect().right)}`);
-      wide.forEach((w) => bad.push(w));
-    }
-    window.scrollTo(0, max);
-    await sleep(1000);
-    const revealed = Array.from(document.querySelectorAll('.reveal')).filter((el) =>
-      el.classList.contains('is-in'),
-    ).length;
-    const missing = Array.from(document.querySelectorAll('.reveal'))
-      .filter((el) => !el.classList.contains('is-in'))
-      .map((el) => `${el.tagName.toLowerCase()}#${el.id || '(无 id)'}`);
-    const images = Array.from(document.querySelectorAll('.node__img'));
-    return {
-      overflow: Array.from(new Set(bad)).slice(0, 8),
-      revealTotal: document.querySelectorAll('.reveal').length,
-      revealed,
-      missing,
-      images: images.map((img) => ({
-        src: img.currentSrc.split('/').pop(),
-        ok: img.complete && img.naturalWidth > 0,
-        shownW: Math.round(img.getBoundingClientRect().width),
-        shownH: Math.round(img.getBoundingClientRect().height),
-        natural: `${img.naturalWidth}×${img.naturalHeight}`,
-      })),
-      timelineDisplay: getComputedStyle(document.querySelector('.timeline')).display,
-      topbarVisible: document.querySelector('.topbar')?.classList.contains('is-visible'),
-      topbarDisplay: getComputedStyle(document.querySelector('.topbar')).display,
-      timelineFill: document.querySelector('#timeline-fill')?.style.height,
-      topFill: document.querySelector('#top-fill')?.style.width,
-      pageHeight: document.documentElement.scrollHeight,
-      sun: getComputedStyle(document.documentElement).getPropertyValue('--sun').trim(),
-      rainOpacity: getComputedStyle(document.querySelector('.rain')).opacity,
-      counts: {
-        photos: document.querySelectorAll('.node__img').length,
-        chapters: document.querySelectorAll('.chapter').length,
-        interludes: document.querySelectorAll('.interlude').length,
-        songs: document.querySelectorAll('.song').length,
-        nodes: document.querySelectorAll('.node').length,
-        chars: document.querySelectorAll('.char').length,
-        emph: document.querySelectorAll('.char--emph, .emph').length,
-        chats: document.querySelectorAll('.chatscene').length,
-      },
-    };
-  });
-
-  // 聊天分镜的打字需要几秒，等它打完再判
-  if (scrollReport.counts.chats > 0) {
-    await page.waitForSelector('.chatscene.is-sent', { timeout: 20000 }).catch(() => {});
+      return {
+        kind: active.className.replace('slide slide--', '').split(' ')[0],
+        visible: getComputedStyle(active).opacity !== '0' && getComputedStyle(active).visibility !== 'hidden',
+        images: images.length,
+        broken: images.filter((img) => !(img.complete && img.naturalWidth > 0)).length,
+        overflow: document.documentElement.scrollWidth > vw + 3,
+        sun: Number(getComputedStyle(document.documentElement).getPropertyValue('--sun')) || 0,
+      };
+    });
+    walk.push({ i, ...info });
   }
 
-  // 一幕的"进—停—出"：图片要先落下来，文字再跟上；而且屏幕里的东西不能是隐形的
-  const motionCheck = await page.evaluate(async () => {
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    const vh = window.innerHeight;
-    const max = document.documentElement.scrollHeight - vh;
-    const invisible = [];
-    const stagger = [];
-    for (const ratio of [0.12, 0.3, 0.5, 0.7, 0.88]) {
-      window.scrollTo(0, max * ratio);
-      await sleep(280);
-      document.querySelectorAll('.motion').forEach((el) => {
-        const r = el.getBoundingClientRect();
-        if (r.height === 0) return;
-        // 只看已经进到屏幕中上部那些；边缘和正在退场的不算
-        if (r.top > vh * 0.45 || r.bottom < vh * 0.25) return;
-        const opacity = Number(getComputedStyle(el).opacity);
-        if (opacity < 0.35) {
-          invisible.push(`${el.className.split(' ')[0]} opacity=${opacity.toFixed(2)} @${ratio}`);
-        }
-      });
-      const pair = Array.from(document.querySelectorAll('.node')).find((node) => {
-        const media = node.querySelector('.node__media');
-        const body = node.querySelector('.node__body');
-        if (!media || !body) return false;
-        const m = media.getBoundingClientRect();
-        const b = body.getBoundingClientRect();
-        return m.bottom > 0 && m.top < vh && b.bottom > 0 && b.top < vh;
-      });
-      if (pair) {
-        const read = (el) =>
-          Number(getComputedStyle(el).getPropertyValue('--in')) || 0;
-        stagger.push({
-          ratio,
-          media: read(pair.querySelector('.node__media')),
-          body: read(pair.querySelector('.node__body')),
-        });
+  if (walk.some((s) => !s.visible)) {
+    const bad = walk.filter((s) => !s.visible).map((s) => s.i);
+    problems.push(`这些幕显示不出来: ${bad.join(',')}`);
+  }
+  const broken = walk.filter((s) => s.broken > 0);
+  if (broken.length) {
+    problems.push(`有图没加载出来: 幕 ${broken.map((s) => `${s.i}(${s.broken})`).join(',')}`);
+  }
+  if (walk.some((s) => s.overflow)) {
+    problems.push(`有幕横向溢出: ${walk.filter((s) => s.overflow).map((s) => s.i).join(',')}`);
+  }
+  const photoSlides = walk.filter((s) => s.kind === 'image');
+  const photoCount = photoSlides.reduce((sum, s) => sum + s.images, 0);
+  if (photoCount < 19) problems.push(`有照片没用上：只出现 ${photoCount} 张`);
+  const sunStart = walk[0]?.sun ?? 0;
+  const sunEnd = walk[walk.length - 1]?.sun ?? 0;
+  if (sunStart > 0.05) problems.push(`开头不该放晴 (--sun=${sunStart})`);
+  if (sunEnd < 0.9) problems.push(`结尾没有放晴 (--sun=${sunEnd})`);
+
+  const counts = {
+    slides: total,
+    image: photoSlides.length,
+    chapter: walk.filter((s) => s.kind === 'chapter').length,
+    text: walk.filter((s) => s.kind === 'text').length,
+    interlude: walk.filter((s) => s.kind === 'interlude').length,
+    chat: walk.filter((s) => s.kind === 'chat').length,
+    songs: walk.filter((s) => s.kind === 'songs').length,
+    ending: walk.filter((s) => s.kind === 'ending').length,
+  };
+  if (counts.interlude < 1) problems.push('没有停顿页');
+  if (counts.chat < 1) problems.push('没有聊天分镜');
+  if (counts.songs < 1) problems.push('没有歌单');
+  if (counts.ending < 1) problems.push('没有结尾');
+
+  /* ---------- 7. 聊天分镜打字 ---------- */
+  const chatIndex = walk.find((s) => s.kind === 'chat')?.i;
+  let chatState = null;
+  if (chatIndex !== undefined) {
+    await page.evaluate((n) => window.__memoryAlbum.go(n, { fromUser: true }), chatIndex);
+    await page.waitForSelector('.slide.is-active .bubble__typed', { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(4000);
+    chatState = await page.evaluate(() => {
+      const active = document.querySelector('.slide.is-active');
+      const bubbles = Array.from(active.querySelectorAll('.bubble__typed'));
+      return {
+        sent: active.classList.contains('is-sent'),
+        typed: bubbles.map((el) => el.textContent.length),
+        expected: bubbles.map((el) => el.closest('.bubble')?.dataset.type?.length ?? 0),
+      };
+    });
+    if (!chatState.sent) problems.push('聊天分镜没有出现"发送"');
+    chatState.typed.forEach((len, i) => {
+      if (len < chatState.expected[i]) {
+        problems.push(`气泡没打完：${len}/${chatState.expected[i]} 字`);
       }
-    }
-    return { invisible: Array.from(new Set(invisible)).slice(0, 6), stagger };
-  });
-
-  if (motionCheck.invisible.length) {
-    problems.push(`屏幕上出现隐形的幕: ${motionCheck.invisible.join(' | ')}`);
-  }
-  const ahead = motionCheck.stagger.filter((s) => s.media > s.body + 0.15);
-  if (!ahead.length) {
-    problems.push(
-      `图片没有先于文字出场: ${motionCheck.stagger.map((s) => `${s.ratio} ${s.media}/${s.body}`).join(' ')}`,
-    );
+    });
+    await page.screenshot({ path: join(OUT, `${viewport.name}-3-chat.png`) });
   }
 
-  const chatState = await page.evaluate(() => {
-    const scenes = Array.from(document.querySelectorAll('.chatscene'));
-    const bubbles = Array.from(document.querySelectorAll('.bubble__typed'));
-    return {
-      scenes: scenes.length,
-      sent: scenes.filter((el) => el.classList.contains('is-sent')).length,
-      typed: bubbles.map((el) => el.textContent.length),
-      expected: bubbles.map((el) => el.closest('.bubble')?.dataset.type?.length ?? 0),
-    };
-  });
+  /* ---------- 8. 点图看大图 ---------- */
+  const imageIndex = walk.find((s) => s.kind === 'image' && s.images === 1)?.i;
+  let lightboxOk = null;
+  if (imageIndex !== undefined) {
+    await page.evaluate((n) => window.__memoryAlbum.go(n, { fromUser: true }), imageIndex);
+    await page.waitForTimeout(600);
+    await page.click('.slide.is-active .slide__img');
+    await page.waitForTimeout(500);
+    lightboxOk = await page.evaluate(() => {
+      const box = document.querySelector('#lightbox');
+      const img = document.querySelector('#lightbox-image');
+      return {
+        open: !box.hidden && getComputedStyle(box).opacity !== '0',
+        loaded: Boolean(img?.naturalWidth),
+      };
+    });
+    if (!lightboxOk.open) problems.push('点图片没有打开大图');
+    if (!lightboxOk.loaded) problems.push('大图没加载');
+    await page.screenshot({ path: join(OUT, `${viewport.name}-4-lightbox.png`) });
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(450);
+    const closed = await page.evaluate(() => document.querySelector('#lightbox')?.hidden);
+    if (!closed) problems.push('Esc 没有关闭大图');
+  }
 
-  if (chatState.scenes < 1) problems.push('没有聊天分镜');
-  if (chatState.sent !== chatState.scenes) {
-    problems.push(`聊天分镜没有出现"发送" (${chatState.sent}/${chatState.scenes})`);
-  }
-  chatState.typed.forEach((len, i) => {
-    if (len < chatState.expected[i]) {
-      problems.push(`气泡没打完：${len}/${chatState.expected[i]} 字`);
-    }
-  });
-
-  if (scrollReport.counts.chars < 10) problems.push('停顿页没有逐字浮现');
-  if (scrollReport.counts.emph < 1) problems.push('没有大字强调');
-  if (scrollReport.counts.photos < 19) {
-    problems.push(`有照片没用上：只呈现了 ${scrollReport.counts.photos} 张`);
-  }
-  if (scrollReport.counts.interludes < 1) problems.push('没有停顿页');
-  if (scrollReport.counts.songs < 1) problems.push('没有歌单章节');
-
-  if (Number(scrollReport.sun) < 0.9) {
-    problems.push(`滚到底没有放晴 (--sun=${scrollReport.sun})`);
-  }
-  if (Number(scrollReport.rainOpacity) > 0.15) {
-    problems.push(`结尾雨没停 (opacity=${scrollReport.rainOpacity})`);
-  }
-  scrollReport.audio = audioState;
-  scrollReport.loopTest = loopTest;
-  scrollReport.chatState = chatState;
-  scrollReport.motionCheck = motionCheck;
-  scrollReport.skyStart = skyStart;
-
-  const brokenImages = scrollReport.images.filter((img) => !img.ok);
-  brokenImages.forEach((img) => problems.push(`图片没加载: ${img.src}`));
-  if (scrollReport.revealed !== scrollReport.revealTotal) {
-    problems.push(
-      `进场动画未触发 ${scrollReport.revealed}/${scrollReport.revealTotal}: ${scrollReport.missing.join(', ')}`,
-    );
-  }
-  if (scrollReport.overflow.length) {
-    problems.push(`滚动中横向溢出: ${scrollReport.overflow.join(' | ')}`);
-  }
-  const wantTimeline = viewport.width >= 1180 ? 'block' : 'none';
-  if (scrollReport.timelineDisplay !== wantTimeline) {
-    problems.push(`时间线 display=${scrollReport.timelineDisplay}，期望 ${wantTimeline}`);
-  }
-  if (viewport.width < 1180 && scrollReport.topbarDisplay !== 'block') {
-    problems.push(`手机顶部进度条没显示 (display=${scrollReport.topbarDisplay})`);
-  }
-  await page.screenshot({ path: join(OUT, `${viewport.name}-3-ending.png`) });
-
-  // 5. 点击看大图
-  await page.evaluate(() => {
-    document.querySelector('.node__img')?.scrollIntoView({ block: 'center' });
-  });
+  /* ---------- 9. 结尾重播 ---------- */
+  await page.evaluate((n) => window.__memoryAlbum.go(n, { fromUser: true }), total - 1);
   await page.waitForTimeout(500);
-  await page.click('.node__img');
-  await page.waitForTimeout(400);
-  const lightboxOpen = await page.evaluate(() => {
-    const box = document.querySelector('#lightbox');
-    const img = document.querySelector('#lightbox-image');
-    return {
-      visible: box && !box.hidden && getComputedStyle(box).opacity !== '0',
-      natural: img ? `${img.naturalWidth}×${img.naturalHeight}` : '',
-      shownW: img ? Math.round(img.getBoundingClientRect().width) : 0,
-    };
-  });
-  if (!lightboxOpen.visible) problems.push('点击图片没有打开大图');
-  if (!lightboxOpen.natural || lightboxOpen.natural.startsWith('0')) {
-    problems.push('大图没有加载');
+  await page.screenshot({ path: join(OUT, `${viewport.name}-5-ending.png`) });
+  const replayExists = await page.evaluate(() => Boolean(document.querySelector('#deck-replay')));
+  if (!replayExists) problems.push('结尾没有"再看一遍"');
+  else {
+    await page.click('#deck-replay');
+    await page.waitForTimeout(600);
+    const afterReplay = await page.evaluate(() => {
+      const active = document.querySelector('.slide.is-active');
+      return Array.from(document.querySelectorAll('.slide')).indexOf(active);
+    });
+    if (afterReplay !== 0) problems.push(`"再看一遍"没有回到第一幕（到了 ${afterReplay}）`);
   }
-  await page.screenshot({ path: join(OUT, `${viewport.name}-4-lightbox.png`) });
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(400);
-  const lightboxClosed = await page.evaluate(() => document.querySelector('#lightbox')?.hidden);
-  if (!lightboxClosed) problems.push('Esc 没有关闭大图');
 
-  // 6. 每个人的独立链接（/yales/）也要能打开
+  /* ---------- 10. /yales/ 独立链接 ---------- */
   await page.goto(`${URL_BASE}/yales/`, { waitUntil: 'load' });
   await page.waitForSelector('.cover__title');
   const direct = await page.evaluate(() => ({
     title: document.querySelector('.cover__title')?.textContent?.trim(),
     docTitle: document.title,
-    cssLoaded: getComputedStyle(document.body).backgroundColor,
+    bg: getComputedStyle(document.body).backgroundColor,
   }));
-  if (!direct.title) problems.push('/yales/ 独立链接没有渲染出名字');
-  if (direct.cssLoaded !== 'rgb(10, 21, 38)') {
-    problems.push(`/yales/ 样式没加载 (body bg=${direct.cssLoaded})`);
-  }
+  if (!direct.title) problems.push('/yales/ 独立链接没有渲染');
+  if (direct.bg !== 'rgb(10, 21, 38)') problems.push(`/yales/ 样式没加载 (${direct.bg})`);
 
-  // 7. 根路径（没带 slug）应该只显示中转页，不能把谁的内容露出去
+  /* ---------- 11. 根路径不能泄露内容 ---------- */
   await page.goto(`${URL_BASE}/`, { waitUntil: 'load' });
   await page.waitForSelector('.cover__title');
   const landing = await page.evaluate(() => ({
     title: document.querySelector('.cover__title')?.textContent?.trim(),
-    hasTimeline: Boolean(document.querySelector('.timeline__chapter')),
+    hasStage: Boolean(document.querySelector('.stage')),
   }));
-  if (landing.hasTimeline) problems.push('根路径直接显示了某个人的内容');
-  if (!landing.title?.includes('专属链接')) {
-    problems.push(`根路径中转页不对: ${landing.title}`);
-  }
+  if (landing.hasStage) problems.push('根路径直接显示了某个人的内容');
+  if (!landing.title?.includes('专属链接')) problems.push(`根路径中转页不对: ${landing.title}`);
+
+  /* ---------- 12. 滚动那套还能用（烟测） ---------- */
+  await page.goto(`${URL_BASE}/?u=yales&mode=scroll`, { waitUntil: 'load' });
+  await page.waitForSelector('.cover__title');
+  await page.click('#open');
+  await page.waitForTimeout(1200);
+  const scrollMode = await page.evaluate(() => ({
+    nodes: document.querySelectorAll('.node').length,
+    photos: document.querySelectorAll('.node__img').length,
+    timeline: Boolean(document.querySelector('.timeline__chapter')),
+  }));
+  if (scrollMode.nodes < 1) problems.push('滚动模式的节点没渲染出来');
+  if (scrollMode.photos < 19) problems.push(`滚动模式少了照片：${scrollMode.photos}`);
+  if (!scrollMode.timeline) problems.push('滚动模式没有时间线');
 
   report.push({
     viewport: viewport.name,
     size: `${viewport.width}×${viewport.height}`,
-    direct,
-    landing,
-    ...scrollReport,
+    counts,
+    sunStart,
+    sunEnd,
+    chatState,
+    scrollMode,
     problems,
   });
   await context.close();
@@ -396,29 +326,15 @@ await browser.close();
 
 for (const entry of report) {
   console.log(`\n=== ${entry.viewport}  ${entry.size} ===`);
-  console.log(`页面总高 ${entry.pageHeight}px   图片 ${entry.images.length} 张`);
-  console.log(`图片显示尺寸 ${entry.images.map((i) => `${i.src} ${i.shownW}×${i.shownH}(${i.natural})`).join('  ')}`);
-  console.log(`时间线 ${entry.timelineDisplay} / 顶部条 ${entry.topbarDisplay} / 进场 ${entry.revealed}/${entry.revealTotal}`);
-  console.log(`进度 时间线=${entry.timelineFill || '—'} 顶条=${entry.topFill || '—'}`);
-  console.log(`独立链接 /yales/ → ${entry.direct?.title} / document.title=${entry.direct?.docTitle}`);
-  console.log(`根路径中转页 → ${entry.landing?.title}`);
   console.log(
-    `音乐 ${entry.audio?.duration}s 播到 ${entry.audio?.time}s  readyState=${entry.audio?.readyState}`,
+    `一共 ${entry.counts.slides} 幕：章节 ${entry.counts.chapter} / 图片 ${entry.counts.image} / 文字 ${entry.counts.text} / 停顿 ${entry.counts.interlude} / 聊天 ${entry.counts.chat} / 歌 ${entry.counts.songs} / 结尾 ${entry.counts.ending}`,
   );
+  console.log(`天色 ${entry.sunStart} → ${entry.sunEnd}`);
+  if (entry.chatState) {
+    console.log(`聊天打字 ${entry.chatState.typed?.join(',')} / 期望 ${entry.chatState.expected?.join(',')}`);
+  }
   console.log(
-    `天色 开头 --sun=${entry.skyStart?.sun} 雨=${entry.skyStart?.rainOpacity} → 结尾 --sun=${entry.sun} 雨=${entry.rainOpacity}`,
-  );
-  console.log(
-    `素材 照片 ${entry.counts?.photos} 张 / 章节 ${entry.counts?.chapters} / 停顿页 ${entry.counts?.interludes} / 歌 ${entry.counts?.songs}`,
-  );
-  console.log(
-    `接缝 槽位 ${entry.loopTest?.slotBefore}→${entry.loopTest?.slotAfter} 跳到 ${entry.loopTest?.time}s 音量 ${entry.loopTest?.volume}`,
-  );
-  console.log(
-    `分镜 逐字 span ${entry.counts?.chars} / 大字 ${entry.counts?.emph} / 聊天 ${entry.chatState?.sent}/${entry.chatState?.scenes} 打字 ${entry.chatState?.typed?.join(',')} 期望 ${entry.chatState?.expected?.join(',')}`,
-  );
-  console.log(
-    `进出 图先文后 ${entry.motionCheck?.stagger?.map((s) => `${s.ratio}:${s.media}/${s.body}`).join(' ') || '—'}`,
+    `滚动那套（烟测）节点 ${entry.scrollMode.nodes} 图 ${entry.scrollMode.photos} 时间线 ${entry.scrollMode.timeline}`,
   );
   console.log(entry.problems.length ? `问题:\n  - ${entry.problems.join('\n  - ')}` : '✅ 没有发现问题');
 }

@@ -1,45 +1,23 @@
 import { createAudio } from './audio.js';
 import { photoSizes } from './data/photo-sizes.js';
-
-const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
-
-/**
- * 把一句话拆成一个字一个字的 span，滚到时依次浮现。
- * 用 ** 包起来的部分会变成大字（参考生日模板里那个突然放大的 "SO"）。
- */
-function richChars(text, startIndex = 0) {
-  let i = startIndex;
-  return String(text ?? '')
-    .split('**')
-    .map((part, index) => {
-      const emph = index % 2 === 1;
-      return Array.from(part)
-        .map((char) => {
-          const body = char === ' ' ? '&#160;' : esc(char);
-          const span = `<span class="char${emph ? ' char--emph' : ''}" style="--i:${i}">${body}</span>`;
-          i += 1;
-          return span;
-        })
-        .join('');
-    })
-    .join('');
-}
-
-/** 段落里的 ** 强调，不拆字 */
-function richInline(text) {
-  return String(text ?? '')
-    .split('**')
-    .map((part, index) => (index % 2 === 1 ? `<strong class="emph">${esc(part)}</strong>` : esc(part)))
-    .join('');
-}
-
-const reducedMotion = () =>
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+import {
+  esc,
+  richChars,
+  richInline,
+  reducedMotion,
+  assetFor,
+  buildSky,
+  buildCover,
+  buildTopbar,
+  buildMusicButton,
+  buildLightbox,
+  setupLightbox,
+  setupMusicButton,
+} from './ui.js';
 
 /** 把 data 渲染成一整页回忆。 */
 export function mount(app, data, ROOT) {
-  const asset = (path) => new URL(path, ROOT).href;
+  const asset = assetFor(ROOT);
   // 注意：这里的路径必须走 asset()，否则在 /yales/ 这种子目录页面下会解析错
   const audio = createAudio({
     ...data.bgm,
@@ -50,14 +28,18 @@ export function mount(app, data, ROOT) {
 
   app.dataset.state = 'ready';
   app.innerHTML =
-    buildSky() + buildCover(data) + buildPage(data, chapters, asset) + buildChrome(audio);
+    buildSky() +
+    buildCover(data) +
+    buildPage(data, chapters, asset) +
+    buildTopbar() +
+    buildMusicButton(audio) +
+    buildLightbox();
 
   const $ = (sel) => app.querySelector(sel);
   const $$ = (sel) => Array.from(app.querySelectorAll(sel));
 
   const cover = $('#cover');
   const page = $('#page');
-  const musicButton = $('#music');
   const timelineFill = $('#timeline-fill');
   const topFill = $('#top-fill');
   const topLabel = $('#top-label');
@@ -76,8 +58,8 @@ export function mount(app, data, ROOT) {
     cover.classList.add('is-gone');
     page.setAttribute('aria-hidden', 'false');
     document.body.classList.remove('is-locked');
-    musicButton.hidden = !audio.enabled;
-    audio.play().then(updateMusicButton);
+    music.show();
+    audio.play().then(() => music.sync());
     window.setTimeout(() => {
       cover.hidden = true;
     }, reducedMotion() ? 0 : 1200);
@@ -97,58 +79,8 @@ export function mount(app, data, ROOT) {
   // 等首屏和第一张图先站稳，再在后台悄悄缓冲音乐
   window.addEventListener('load', () => window.setTimeout(() => audio.warm(), 2500));
 
-  /* ---------- 音乐按钮 ---------- */
-  function updateMusicButton() {
-    if (!audio.enabled) return;
-    musicButton.classList.toggle('is-paused', audio.paused);
-    musicButton.setAttribute(
-      'aria-label',
-      audio.paused ? `播放${audio.title}` : `暂停${audio.title}`,
-    );
-    musicButton.title = audio.paused ? `播放 ${audio.title}` : `暂停 ${audio.title}`;
-  }
-  musicButton.addEventListener('click', async () => {
-    await audio.toggle();
-    updateMusicButton();
-  });
-
-  /* ---------- 点击看大图 ---------- */
-  const lightbox = $('#lightbox');
-  const lightboxImage = $('#lightbox-image');
-  let lastFocused = null;
-
-  function openLightbox(img) {
-    lastFocused = img;
-    lightboxImage.src = img.currentSrc || img.src;
-    lightboxImage.alt = img.alt;
-    lightbox.hidden = false;
-    requestAnimationFrame(() => lightbox.classList.add('is-open'));
-    $('#lightbox-close').focus({ preventScroll: true });
-  }
-
-  function closeLightbox() {
-    lightbox.classList.remove('is-open');
-    window.setTimeout(
-      () => {
-        lightbox.hidden = true;
-        lightboxImage.removeAttribute('src');
-      },
-      reducedMotion() ? 0 : 260,
-    );
-    lastFocused?.focus({ preventScroll: true });
-  }
-
-  app.addEventListener('click', (event) => {
-    const img = event.target.closest('.node__img');
-    if (img) openLightbox(img);
-  });
-  lightbox.addEventListener('click', (event) => {
-    if (event.target === lightboxImage) return;
-    closeLightbox();
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !lightbox.hidden) closeLightbox();
-  });
+  const music = setupMusicButton(app, audio);
+  setupLightbox(app);
 
   /* ---------- 进场动画 ---------- */
   const revealTargets = $$('.reveal, .motion');
@@ -344,49 +276,6 @@ export function mount(app, data, ROOT) {
 }
 
 /* ------------------------------------------------------------------ */
-
-function buildSky() {
-  return `
-  <div class="sky" aria-hidden="true">
-    <div class="sky__glow"></div>
-    <div class="rain"></div>
-    <div class="sky__sun"></div>
-  </div>`;
-}
-
-function buildCover(data) {
-  const cover = data.cover || {};
-  return `
-  <div class="cover" id="cover">
-    <div class="cover__glow" aria-hidden="true"></div>
-    <div class="cover__inner">
-      ${cover.kicker ? `<p class="cover__kicker">${esc(cover.kicker)}</p>` : ''}
-      <h1 class="cover__title">${esc(cover.title || data.name || '')}</h1>
-      ${cover.subtitle ? `<p class="cover__subtitle">${esc(cover.subtitle)}</p>` : ''}
-      <button class="cover__open" id="open" type="button">
-        <span class="cover__open-ring" aria-hidden="true"></span>
-        <span>${esc(cover.openLabel || '打开')}</span>
-      </button>
-      ${cover.hint ? `<p class="cover__hint">${esc(cover.hint)}</p>` : ''}
-    </div>
-  </div>`;
-}
-
-function buildChrome(audio) {
-  return `
-  <div class="topbar" id="top-progress">
-    <div class="topbar__bar"><span id="top-fill"></span></div>
-    <div class="topbar__label" id="top-label"></div>
-  </div>
-  <button class="music" id="music" type="button" hidden>
-    <span class="music__bars" aria-hidden="true"><i></i><i></i><i></i></span>
-    <span class="music__text">${esc(audio.title)}</span>
-  </button>
-  <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="查看大图">
-    <button class="lightbox__close" id="lightbox-close" type="button">关闭</button>
-    <img class="lightbox__img" id="lightbox-image" alt="" />
-  </div>`;
-}
 
 function buildPage(data, chapters, asset) {
   const nav = chapters

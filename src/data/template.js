@@ -15,6 +15,12 @@
 export default {
   slug: 'template',
 
+  // 'slides'（默认）单屏自动播，一屏一幕；'scroll' 往下滚
+  presentation: 'slides',
+
+  // 每一幕停多久（毫秒），不写就用默认值
+  // timing: { chapter: 3800, image: 8000, text: 5600, interlude: 4800, chat: 8000, songs: 11000, ending: 16000 },
+
   name: '她的名字',
   cover: {
     kicker: '这是给你的',
