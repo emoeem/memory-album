@@ -23,6 +23,9 @@ const ENTRIES = [
   'robots.txt',
   '.nojekyll',
   'src',
+  // 浏览器用的第三方库（tsParticles / Motion），是自己打包好放进来的，
+  // 不是 node_modules —— 详见 scripts/vendor/
+  'vendor',
   'photos',
   'audio',
   'og',

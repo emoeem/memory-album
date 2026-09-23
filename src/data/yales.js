@@ -86,14 +86,23 @@ export default {
     {
       kind: 'chat',
       id: 'c1',
-      label: '一句',
+      label: '深夜',
       date: '',
       bubbles: [
         { side: 'you', text: '在吗' },
         { side: 'me', text: '在' },
         { side: 'you', text: '没什么事，就是想确认一下你还在' },
+        { side: 'me', text: '一直在的。明天醒了也还在。' },
       ],
-      sendLabel: '发送',
+      sendLabel: '发了',
+    },
+
+    {
+      kind: 'interlude',
+      id: 'rain-note',
+      label: '雨',
+      date: '',
+      lines: ['我喜欢下雨的晚上。', '因为雨声很大，会盖过一些不好的声音。', '也因为那个时候你总在。'],
     },
 
     {
@@ -102,6 +111,22 @@ export default {
       label: '插句',
       date: '',
       lines: ['后来我才发现，', '跟你说话是我一天里**最松**的时候。'],
+    },
+
+    {
+      kind: 'chat',
+      id: 'c-rain',
+      label: '下雨了',
+      date: '',
+      bubbles: [
+        { side: 'you', text: '你那边下雨了吗' },
+        { side: 'me', text: '还没，不过风开始大了' },
+        { side: 'you', text: '我窗外已经下起来了，特别大' },
+        { side: 'you', text: '感觉整个城市都安静了一点' },
+        { side: 'me', text: '嗯，雨天就是有这种魔力' },
+        { side: 'me', text: '像有人给世界开了静音' },
+      ],
+      sendLabel: '嗯',
     },
 
     {
@@ -146,6 +171,30 @@ export default {
           images: ['photos/yales/p05.webp', 'photos/yales/p06.webp', 'photos/yales/p07.webp'],
         },
       ],
+    },
+
+    {
+      kind: 'chat',
+      id: 'c-share',
+      label: '分享',
+      date: '',
+      bubbles: [
+        { side: 'you', text: '这首歌给你听' },
+        { side: 'me', text: '好，我现在听听' },
+        { side: 'me', text: '好听。你什么时候发现的' },
+        { side: 'you', text: '刚刷到的，觉得你肯定会喜欢' },
+        { side: 'you', text: '所以你看，我其实时刻想着你的' },
+        { side: 'me', text: '知道的呀。我也是。' },
+      ],
+      sendLabel: '给你',
+    },
+
+    {
+      kind: 'interlude',
+      id: 'blessing-share',
+      label: '想起你',
+      date: '',
+      lines: ['不是非得有什么特别的事才会想起你。', '有时候只是听到一句歌词，', '或者看到某个颜色，就想起你了。'],
     },
 
     {
@@ -216,6 +265,22 @@ export default {
 
     {
       kind: 'chat',
+      id: 'c-cheer',
+      label: '加油',
+      date: '',
+      bubbles: [
+        { side: 'you', text: '我好烦啊' },
+        { side: 'me', text: '来，跟我说说' },
+        { side: 'you', text: '不说了，说了也没用' },
+        { side: 'me', text: '有用没用另说，先让它从心里跑出来' },
+        { side: 'me', text: '我在听着呢。' },
+        { side: 'me', text: '而且你每次说完，都会好很多的。' },
+      ],
+      sendLabel: '我在',
+    },
+
+    {
+      kind: 'chat',
       id: 'c3',
       label: '关于以后',
       date: '',
@@ -260,6 +325,30 @@ export default {
     },
 
     {
+      kind: 'chat',
+      id: 'c-hard',
+      label: '撑不住',
+      date: '',
+      bubbles: [
+        { side: 'you', text: '我是不是真的有点撑不住了' },
+        { side: 'me', text: '能说这句话就已经很厉害了' },
+        { side: 'me', text: '撑不住也没关系，我帮你一起托着' },
+        { side: 'you', text: '这样会不会麻烦到你' },
+        { side: 'me', text: '不会的。' },
+        { side: 'me', text: '能麻烦到我，是你的信任。' },
+      ],
+      sendLabel: '陪着你',
+    },
+
+    {
+      kind: 'interlude',
+      id: 'hope',
+      label: '慢慢来',
+      date: '',
+      lines: ['没关系的。', '不用逼着自己立刻好起来。', '我会陪你一起等，等到那片乌云散掉。'],
+    },
+
+    {
       kind: 'interlude',
       id: 'i3',
       label: '插句',
@@ -299,6 +388,30 @@ export default {
     },
 
     {
+      kind: 'chat',
+      id: 'c-final',
+      label: '以后',
+      date: '',
+      bubbles: [
+        { side: 'me', text: '对了，答应我一件事好吗' },
+        { side: 'you', text: '什么' },
+        { side: 'me', text: '不管发生什么，都不要觉得自己是一个人' },
+        { side: 'me', text: '你有我呀' },
+        { side: 'you', text: '嗯' },
+        { side: 'you', text: '我知道。一直都知道的。' },
+      ],
+      sendLabel: '答应了',
+    },
+
+    {
+      kind: 'interlude',
+      id: 'ending-wish',
+      label: '最后一个愿望',
+      date: '',
+      lines: ['愿你明天醒来的时候，', '有阳光，有一杯热的东西，', '还有一条让你嘴角上扬的消息。'],
+    },
+
+    {
       id: 'now',
       label: '现在的我们',
       date: '现在',
@@ -324,8 +437,9 @@ export default {
     title: '给你的话',
     paragraphs: [
       '谢谢你愿意把那些小小的日常，一点一点分享给我。',
-      '有些只是照片，有些只是随手发来的一句话，可它们最后都留在了这里。你喜欢《天气之子》，所以我也想借它的雨和晴天，认真祝你一次。',
-      '接下来的路不用急，慢慢来也没关系。每天开心，照顾好自己，按时吃饭，好好睡觉。**愿你一直有值得分享的日常，也一直有人认真听。**',
+      '有些只是随手发来的一张照片，有些只是半夜随口说的一句话，可它们最后都在这里堆成了一整个季节。你喜欢《天气之子》，所以我借了它的雨、它的云、还有那道终于放晴的光，认真祝你一次。',
+      '其实没什么大事。就是想让你知道，你发来的每一条消息、每一张照片、每一句没说出口的话，我都认真看过，也都认真记得。',
+      '接下来的路不用急，慢慢来也没关系。每天开心一点，照顾好自己，按时吃饭，好好睡觉。**愿你一直有值得分享的日常，也一直有人认真听。** 愿你的天，总会放晴。',
     ],
     images: [
       'photos/yales/p03.webp',
@@ -334,7 +448,7 @@ export default {
       'photos/yales/p15.webp',
       'photos/yales/p18.webp',
     ],
-    sign: '你的朋友',
-    date: '2026 中秋',
+    sign: '一直听你说话的人',
+    date: '2026',
   },
 };

@@ -1,4 +1,5 @@
 import { createAudio } from './audio.js';
+import { setSun } from './weather.js';
 import { photoSizes } from './data/photo-sizes.js';
 import {
   esc,
@@ -46,9 +47,6 @@ export function mount(app, data, ROOT) {
   const topProgress = $('#top-progress');
   const openButton = $('#open');
   const endingSection = $('#ending');
-  const rainLayer = $('.rain');
-  const weatherValue = $('.sky__weather-value');
-  const weatherLabel = $('.sky__weather-label');
 
   document.body.classList.add('is-locked');
 
@@ -142,7 +140,9 @@ export function mount(app, data, ROOT) {
       const target = bubble.querySelector('.bubble__typed');
       const text = bubble.dataset.type || '';
       const chars = Array.from(text);
-      const per = reducedMotion() ? 0 : 55;
+      const calm = reducedMotion();
+      const per = calm ? 0 : 55;
+      const gap = calm ? 0 : 420;
       window.setTimeout(() => bubble.classList.add('is-typing'), delay);
       chars.forEach((char, i) => {
         window.setTimeout(() => {
@@ -154,7 +154,7 @@ export function mount(app, data, ROOT) {
         bubble.classList.remove('is-typing');
         bubble.classList.add('is-done');
       }, total + 220);
-      delay = total + 420;
+      delay = total + gap;
     });
     window.setTimeout(() => scene.classList.add('is-sent'), delay + 200);
   }
@@ -240,10 +240,8 @@ export function mount(app, data, ROOT) {
         const sun = Math.min(1, Math.max(0, (from - top) / (from - to)));
         if (Math.abs(sun - lastSun) > 0.004) {
           lastSun = sun;
-          doc.style.setProperty('--sun', sun.toFixed(3));
-          weatherValue && (weatherValue.textContent = sun < .28 ? '雨中' : sun < .68 ? '云隙' : '放晴');
-          weatherLabel && (weatherLabel.textContent = sun < .68 ? 'RAIN' : 'CLEAR');
-          rainLayer?.classList.toggle('is-stopped', sun > 0.99);
+          // --sun、data-weather、雨/云/尘埃的浓度、右下角角标都在里面
+          setSun(sun);
         }
       }
       ticking = false;

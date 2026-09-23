@@ -10,6 +10,12 @@
     "links": "node scripts/make-links.mjs",
     "og": "node scripts/make-og.mjs",
     "build": "node scripts/build.mjs",
-    "check": "node scripts/check-layout.mjs"
+    "check": "node scripts/check-layout.mjs",
+    "vendor": "esbuild scripts/vendor/entry-tsparticles.js --bundle --format=esm --minify --target=es2020 --legal-comments=none --outfile=vendor/tsparticles.js && esbuild scripts/vendor/entry-motion.js --bundle --format=esm --minify --target=es2020 --legal-comments=none --outfile=vendor/motion.js"
+  },
+  "devDependencies": {
+    "@tsparticles/engine": "^4.4.0",
+    "@tsparticles/slim": "^4.4.0",
+    "motion": "^13.4.1"
   }
 }

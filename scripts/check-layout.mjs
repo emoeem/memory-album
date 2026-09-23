@@ -150,8 +150,17 @@ for (const viewport of VIEWPORTS) {
   const total = await page.evaluate(() => document.querySelectorAll('.slide').length);
   const walk = [];
   for (let i = 0; i < total; i += 1) {
-    await page.evaluate((n) => window.__memoryAlbum.go(n, { fromUser: true }), i);
-    await page.waitForTimeout(220);
+    await page.evaluate(async (n) => {
+      window.__memoryAlbum.go(n, { fromUser: true });
+      // 等两帧再往下走：这一幕的淡入是下一帧才开始的，
+      // 不等就容易读到 opacity: 0，误判成"显示不出来"
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+    }, i);
+    // 450ms：足够让 0.95s 的淡入走出个明确的中间值。
+    // 软件渲染（CI / 无 GPU）时首帧可能要 200ms 上下，等太短会误判成"没显示"。
+    await page.waitForTimeout(450);
     const info = await page.evaluate(async () => {
       const active = document.querySelector('.slide.is-active');
       const vw = Math.round(window.visualViewport?.width ?? window.innerWidth);
@@ -185,7 +194,9 @@ for (const viewport of VIEWPORTS) {
   if (walk.some((s) => s.overflow)) {
     problems.push(`有幕横向溢出: ${walk.filter((s) => s.overflow).map((s) => s.i).join(',')}`);
   }
-  const photoSlides = walk.filter((s) => s.kind === 'image');
+  // 图文并排的节点走的是 slide--memory，只有图没有字的才是 slide--image，
+  // 两种都算"照片幕"，不然这套检查会报"有照片没用上"的假警。
+  const photoSlides = walk.filter((s) => s.kind === 'image' || s.kind === 'memory');
   const photoCount = photoSlides.reduce((sum, s) => sum + s.images, 0);
   if (photoCount < 19) problems.push(`有照片没用上：只出现 ${photoCount} 张`);
   const sunStart = walk[0]?.sun ?? 0;
@@ -196,6 +207,7 @@ for (const viewport of VIEWPORTS) {
   const counts = {
     slides: total,
     image: photoSlides.length,
+    memory: walk.filter((s) => s.kind === 'memory').length,
     chapter: walk.filter((s) => s.kind === 'chapter').length,
     text: walk.filter((s) => s.kind === 'text').length,
     interlude: walk.filter((s) => s.kind === 'interlude').length,
@@ -234,7 +246,9 @@ for (const viewport of VIEWPORTS) {
   }
 
   /* ---------- 8. 点图看大图 ---------- */
-  const imageIndex = walk.find((s) => s.kind === 'image' && s.images === 1)?.i;
+  const imageIndex = walk.find(
+    (s) => (s.kind === 'image' || s.kind === 'memory') && s.images === 1,
+  )?.i;
   let lightboxOk = null;
   if (imageIndex !== undefined) {
     await page.evaluate((n) => window.__memoryAlbum.go(n, { fromUser: true }), imageIndex);

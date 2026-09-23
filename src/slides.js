@@ -3,6 +3,8 @@
 // 可以暂停、可以手动翻页、可以甩手指划，所以不用赶时间。
 
 import { createAudio } from './audio.js';
+import { animateSlideIn, animateSlideOut } from './motion.js';
+import { setSun, triggerRainRipple } from './weather.js';
 import { photoSizes } from './data/photo-sizes.js';
 import {
   esc,
@@ -14,7 +16,6 @@ import {
   buildCover,
   buildLightbox,
   setupLightbox,
-  setSun,
 } from './ui.js';
 
 const DEFAULT_TIMING = {
@@ -87,8 +88,6 @@ export function mountSlides(app, data, ROOT) {
   const toggleButton = $('#deck-toggle');
   const lightbox = setupLightbox(app);
   const music = $('#deck-music');
-  const weatherValue = $('.sky__weather-value');
-  const weatherLabel = $('.sky__weather-label');
 
   let index = -1;
   let playing = false;
@@ -112,7 +111,10 @@ export function mountSlides(app, data, ROOT) {
     if (el.dataset.typed === '1') return 0;
     el.dataset.typed = '1';
     const bubbles = Array.from(el.querySelectorAll('.bubble'));
-    const per = reducedMotion() ? 0 : 55;
+    const calm = reducedMotion();
+    const per = calm ? 0 : 55;
+    // 降级动效时不要那种"一条条隔开"的节奏，直接一口气说完
+    const gap = calm ? 0 : 420;
     let delay = 0;
     bubbles.forEach((bubble) => {
       const target = bubble.querySelector('.bubble__typed');
@@ -131,10 +133,17 @@ export function mountSlides(app, data, ROOT) {
         bubble.classList.remove('is-typing');
         bubble.classList.add('is-done');
       }, total + 220);
-      delay = total + 420;
+      delay = total + gap;
     });
-    window.setTimeout(() => el.classList.add('is-sent'), delay + 200);
-    const ms = delay + 400;
+    window.setTimeout(() => {
+      el.classList.add('is-sent');
+      const send = el.querySelector('.chatscene__send');
+      if (send && !calm) {
+        send.classList.add('is-pulsing');
+        window.setTimeout(() => send.classList.remove('is-pulsing'), 720);
+      }
+    }, delay + (calm ? 0 : 200));
+    const ms = delay + (calm ? 0 : 400);
     el.dataset.typeMs = String(ms);
     return ms;
   }
@@ -188,11 +197,8 @@ export function mountSlides(app, data, ROOT) {
     if (Object.prototype.hasOwnProperty.call(explicit, id)) sun = explicit[id];
     if (kind === 'interlude' && id === 'rain') sun = 0.04;
     if (kind === 'songs') sun = Math.max(sun, 0.46);
-    setSun(document.documentElement, sun);
-    const weather = sun < 0.18 ? ['RAIN', '雨中'] : sun < 0.48 ? ['CLOUD', '云隙'] : sun < 0.78 ? ['SUNBREAK', '云开'] : ['CLEAR', '放晴'];
-    if (weatherValue) weatherValue.textContent = weather[1];
-    if (weatherLabel) weatherLabel.textContent = weather[0];
-    document.documentElement.dataset.weather = weather[0].toLowerCase();
+    // --sun、data-weather、雨/云/尘埃的浓度、右下角角标都在里面
+    setSun(sun);
   }
 
   function updateDeck() {
@@ -212,7 +218,10 @@ export function mountSlides(app, data, ROOT) {
     el.classList.remove('is-in');
     hydrate(el);
     // 下一帧再加，保证里面的动画每次都从头播
-    requestAnimationFrame(() => el.classList.add('is-in'));
+    requestAnimationFrame(() => {
+      el.classList.add('is-in');
+      animateSlideIn(el);
+    });
     if (el.dataset.typed === '1') {
       // 返回来看过的，直接把字补齐
       el.querySelectorAll('.bubble').forEach((bubble) => {
@@ -230,7 +239,10 @@ export function mountSlides(app, data, ROOT) {
     const target = Math.max(0, Math.min(total - 1, next));
     if (target === index) return;
     const previous = slideEls[index];
-    if (previous) previous.classList.remove('is-active');
+    if (previous) {
+      animateSlideOut(previous);
+      previous.classList.remove('is-active');
+    }
     index = target;
     const el = slideEls[index];
     el.classList.add('is-active');
@@ -240,6 +252,7 @@ export function mountSlides(app, data, ROOT) {
       if (slideEls[i]) hydrate(slideEls[i]);
     });
     applySun();
+    triggerRainRipple();
     updateDeck();
     if (playing || fromUser) schedule();
   }

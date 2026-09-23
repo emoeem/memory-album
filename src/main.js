@@ -1,6 +1,7 @@
 import { albums } from './data/index.js';
 import { mount } from './album.js';
 import { mountSlides } from './slides.js';
+import { mountSky, mountRainHover } from './weather.js';
 
 const ROOT = new URL('../', import.meta.url);
 const app = document.getElementById('app');
@@ -81,6 +82,9 @@ async function boot() {
       (override || data.presentation) === 'scroll' ? mount : mountSlides;
     window.__memoryAlbum = render(app, data, ROOT);
     setMeta(data);
+    // 雨 / 云 / 空气粒子（天光的 CSS 那一层已经在 buildSky 里了）
+    void mountSky();
+    void mountRainHover();
   } catch (error) {
     console.error(error);
     app.dataset.state = 'ready';

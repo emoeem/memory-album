@@ -41,20 +41,25 @@ export function richInline(text) {
     .join('');
 }
 
-/** 雨夜 / 天色那一层 */
+/**
+ * 雨夜 / 天色那一层。
+ * 里面带 id 的那几个空 div 是 tsParticles 的宿主（见 weather.js），
+ * 粒子负责雨、云、尘埃；剩下几层是纯 CSS 的天光、地平线和雾。
+ */
 export function buildSky() {
   return `
   <div class="sky" aria-hidden="true">
     <div class="sky__glow"></div>
-    <div class="sky__clouds sky__clouds--far"></div>
-    <div class="sky__clouds sky__clouds--near"></div>
-    <div class="sky__sun-disc"></div>
-    <div class="sky__sun-rays"></div>
-    <div class="rain">
-      <div class="rain__foreground"></div>
-      <div class="rain__mist"></div>
-      <div class="rain__puddle"></div>
+    <div class="sky__clouds" id="sky-clouds"></div>
+    <div class="sky__air" id="sky-air"></div>
+    <div class="sky__sunlight"></div>
+    <div class="sky__rays"></div>
+    <div class="sky__rain">
+      <div class="sky__rain-layer" id="sky-rain-heavy"></div>
+      <div class="sky__rain-layer sky__rain-layer--fine" id="sky-rain-light"></div>
     </div>
+    <div class="sky__rain-closeup" aria-hidden="true"></div>
+    <div class="sky__mist"></div>
     <div class="sky__horizon"></div>
     <div class="sky__weather" aria-hidden="true">
       <span class="sky__weather-dot"></span>
@@ -62,6 +67,7 @@ export function buildSky() {
       <span class="sky__weather-value">雨中</span>
     </div>
     <div class="sky__grain"></div>
+    <div class="sky__ripples" aria-hidden="true"></div>
   </div>`;
 }
 
@@ -182,9 +188,4 @@ export function setupMusicButton(app, audio, onToggle) {
       button.hidden = !audio.enabled;
     },
   };
-}
-
-/** 天色：雨变小、暖光起来 */
-export function setSun(root, value) {
-  root.style.setProperty('--sun', Math.min(1, Math.max(0, value)).toFixed(3));
 }
