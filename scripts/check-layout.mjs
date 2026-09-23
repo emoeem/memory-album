@@ -152,17 +152,22 @@ for (const viewport of VIEWPORTS) {
   const scrollReport = await page.evaluate(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const bad = [];
+    // 手机上 window.innerWidth 会因为内容超宽而变大，用视觉视口做基准才准
+    const vw = Math.round(window.visualViewport?.width ?? window.innerWidth);
+    const TOLERANCE = 3;
     const max = document.documentElement.scrollHeight - window.innerHeight;
     for (let y = 0; y <= max; y += Math.max(200, max / 24)) {
       window.scrollTo(0, y);
       await sleep(60);
-      if (document.documentElement.scrollWidth > window.innerWidth + 1) {
-        bad.push(`scrollY=${Math.round(y)} 横向溢出`);
+      if (document.documentElement.scrollWidth > vw + TOLERANCE) {
+        bad.push(
+          `scrollY=${Math.round(y)} 横向溢出 ${document.documentElement.scrollWidth}>${vw}`,
+        );
       }
       const wide = Array.from(document.querySelectorAll('.node, .node__img, .chapter__head'))
         .filter((el) => {
           const r = el.getBoundingClientRect();
-          return r.width > window.innerWidth + 1 || r.right > window.innerWidth + 2 || r.left < -2;
+          return r.width > vw + TOLERANCE || r.right > vw + TOLERANCE || r.left < -TOLERANCE;
         })
         .map((el) => `${el.className}: ${Math.round(el.getBoundingClientRect().left)}→${Math.round(el.getBoundingClientRect().right)}`);
       wide.forEach((w) => bad.push(w));
@@ -213,6 +218,58 @@ for (const viewport of VIEWPORTS) {
   if (scrollReport.counts.chats > 0) {
     await page.waitForSelector('.chatscene.is-sent', { timeout: 20000 }).catch(() => {});
   }
+
+  // 一幕的"进—停—出"：图片要先落下来，文字再跟上；而且屏幕里的东西不能是隐形的
+  const motionCheck = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const vh = window.innerHeight;
+    const max = document.documentElement.scrollHeight - vh;
+    const invisible = [];
+    const stagger = [];
+    for (const ratio of [0.12, 0.3, 0.5, 0.7, 0.88]) {
+      window.scrollTo(0, max * ratio);
+      await sleep(280);
+      document.querySelectorAll('.motion').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.height === 0) return;
+        // 只看已经进到屏幕中上部那些；边缘和正在退场的不算
+        if (r.top > vh * 0.45 || r.bottom < vh * 0.25) return;
+        const opacity = Number(getComputedStyle(el).opacity);
+        if (opacity < 0.35) {
+          invisible.push(`${el.className.split(' ')[0]} opacity=${opacity.toFixed(2)} @${ratio}`);
+        }
+      });
+      const pair = Array.from(document.querySelectorAll('.node')).find((node) => {
+        const media = node.querySelector('.node__media');
+        const body = node.querySelector('.node__body');
+        if (!media || !body) return false;
+        const m = media.getBoundingClientRect();
+        const b = body.getBoundingClientRect();
+        return m.bottom > 0 && m.top < vh && b.bottom > 0 && b.top < vh;
+      });
+      if (pair) {
+        const read = (el) =>
+          Number(getComputedStyle(el).getPropertyValue('--in')) || 0;
+        stagger.push({
+          ratio,
+          media: read(pair.querySelector('.node__media')),
+          body: read(pair.querySelector('.node__body')),
+        });
+      }
+    }
+    return { invisible: Array.from(new Set(invisible)).slice(0, 6), stagger };
+  });
+
+  if (motionCheck.invisible.length) {
+    problems.push(`屏幕上出现隐形的幕: ${motionCheck.invisible.join(' | ')}`);
+  }
+  const ahead = motionCheck.stagger.filter((s) => s.media > s.body + 0.15);
+  if (!ahead.length) {
+    problems.push(
+      `图片没有先于文字出场: ${motionCheck.stagger.map((s) => `${s.ratio} ${s.media}/${s.body}`).join(' ')}`,
+    );
+  }
+
   const chatState = await page.evaluate(() => {
     const scenes = Array.from(document.querySelectorAll('.chatscene'));
     const bubbles = Array.from(document.querySelectorAll('.bubble__typed'));
@@ -251,6 +308,7 @@ for (const viewport of VIEWPORTS) {
   scrollReport.audio = audioState;
   scrollReport.loopTest = loopTest;
   scrollReport.chatState = chatState;
+  scrollReport.motionCheck = motionCheck;
   scrollReport.skyStart = skyStart;
 
   const brokenImages = scrollReport.images.filter((img) => !img.ok);
@@ -358,6 +416,9 @@ for (const entry of report) {
   );
   console.log(
     `分镜 逐字 span ${entry.counts?.chars} / 大字 ${entry.counts?.emph} / 聊天 ${entry.chatState?.sent}/${entry.chatState?.scenes} 打字 ${entry.chatState?.typed?.join(',')} 期望 ${entry.chatState?.expected?.join(',')}`,
+  );
+  console.log(
+    `进出 图先文后 ${entry.motionCheck?.stagger?.map((s) => `${s.ratio}:${s.media}/${s.body}`).join(' ') || '—'}`,
   );
   console.log(entry.problems.length ? `问题:\n  - ${entry.problems.join('\n  - ')}` : '✅ 没有发现问题');
 }

@@ -151,23 +151,50 @@ export function mount(app, data, ROOT) {
   });
 
   /* ---------- 进场动画 ---------- */
-  const revealTargets = $$('.reveal');
-  let revealObserver = null;
-  if (reducedMotion()) {
-    revealTargets.forEach((el) => el.classList.add('is-in'));
-  } else {
-    revealObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-in');
-            revealObserver.unobserve(entry.target);
-          }
-        });
-      },
-      { rootMargin: '0px 0px -12% 0px', threshold: 0.12 },
-    );
-    revealTargets.forEach((el) => revealObserver.observe(el));
+  const revealTargets = $$('.reveal, .motion');
+
+  /**
+   * 一幕的"进—停—出"。
+   * 参考生日模板那种一幕幕推过去的节奏：动作不是靠定时器，而是跟着滚动走，
+   * 所以她停在哪一幕就停在哪一幕，想多看一会儿就多看一会儿。
+   *
+   *   --in   0→1  斜着落下来
+   *   --out  0→1  斜着滑走、上飞、轻微缩小
+   *
+   * 比一屏还高的元素（长截图那种）不做"出场"，否则会在还能看见的时候就淡掉。
+   */
+  const smootherstep = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+  function updateMotion() {
+    if (reducedMotion()) {
+      revealTargets.forEach((el) => el.classList.add('is-in'));
+      return;
+    }
+    const vh = window.innerHeight;
+    revealTargets.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      // data-lag 越大出场越晚 —— 图片先落，文字跟上
+      const lag = Math.min(1, Math.max(0, Number(el.dataset.lag || 0)));
+      const start = vh * (0.94 - 0.44 * lag);
+      const enter = Math.min(1, Math.max(0, (start - rect.top) / (vh * 0.36)));
+
+      // is-in 也从这里给：不再依赖 IntersectionObserver，
+      // 甩着滚也不会漏掉某一幕，导致里面的字永远不出现
+      const eased = smootherstep(enter);
+      if (eased > 0.02) el.classList.add('is-in');
+
+      if (!el.classList.contains('motion')) return;
+
+      const short = rect.height < vh * 0.8;
+      const leave = short
+        ? Math.min(1, Math.max(0, (vh * 0.3 - rect.bottom) / (vh * 0.32)))
+        : 0;
+      // 比一屏还高的、以及图片本身，都不斜切：
+      // 长元素一斜，上边缘就横着偏出去上百像素，会怼出屏幕
+      el.classList.toggle('is-tall', !short || el.dataset.skew === '0');
+      el.style.setProperty('--in', eased.toFixed(3));
+      el.style.setProperty('--out', smootherstep(leave).toFixed(3));
+      if (el.classList.contains('chatscene') && eased > 0.3) typeChat(el);
+    });
   }
 
   /* ---------- 聊天分镜：一个字一个字打出来 ---------- */
@@ -198,24 +225,8 @@ export function mount(app, data, ROOT) {
     window.setTimeout(() => scene.classList.add('is-sent'), delay + 200);
   }
 
-  if (chatScenes.length) {
-    if (reducedMotion()) {
-      chatScenes.forEach(typeChat);
-    } else {
-      const chatObserver = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              typeChat(entry.target);
-              chatObserver.unobserve(entry.target);
-            }
-          });
-        },
-        { rootMargin: '0px 0px -25% 0px', threshold: 0.3 },
-      );
-      chatScenes.forEach((scene) => chatObserver.observe(scene));
-    }
-  }
+  // 打字由 updateMotion 在滚到那一幕时触发，不另开观察者
+  if (reducedMotion()) chatScenes.forEach(typeChat);
 
   /* ---------- 时间线：当前读到哪 ---------- */
   const nodes = $$('.node, .interlude, .songs, .chatscene');
@@ -283,6 +294,7 @@ export function mount(app, data, ROOT) {
       if (timelineFill) timelineFill.style.height = `${ratio * 100}%`;
       if (topFill) topFill.style.width = `${ratio * 100}%`;
       if (topProgress) topProgress.classList.toggle('is-visible', window.scrollY > 8);
+      updateMotion();
 
       // 越接近结尾，雨越小、天色越暖 —— 那一下放晴
       if (endingSection) {
@@ -310,7 +322,6 @@ export function mount(app, data, ROOT) {
   replayButton?.addEventListener('click', () => {
     // 让所有进场动画可以重新播一次
     revealTargets.forEach((el) => el.classList.remove('is-in'));
-    if (revealObserver) revealTargets.forEach((el) => revealObserver.observe(el));
 
     chatScenes.forEach((scene) => {
       scene.dataset.typed = '0';
@@ -339,6 +350,7 @@ function buildSky() {
   <div class="sky" aria-hidden="true">
     <div class="sky__glow"></div>
     <div class="rain"></div>
+    <div class="sky__sun"></div>
   </div>`;
 }
 
@@ -431,7 +443,7 @@ function buildPage(data, chapters, asset) {
 
 function head(chapter, chapterIndex) {
   return `
-    <header class="chapter__head reveal">
+    <header class="chapter__head reveal motion">
       <p class="chapter__index">${String(chapterIndex + 1).padStart(2, '0')}</p>
       ${chapter.date ? `<p class="chapter__date">${esc(chapter.date)}</p>` : ''}
       <h2 class="chapter__label">${esc(chapter.label || '')}</h2>
@@ -441,7 +453,7 @@ function head(chapter, chapterIndex) {
 
 function buildChapter(chapter, asset, chapterIndex) {
   return `
-  <section class="chapter reveal" id="${esc(chapter.id)}" data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
+  <section class="chapter reveal motion" id="${esc(chapter.id)}" data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
     ${head(chapter, chapterIndex)}
     ${(chapter.nodes || []).map((node, i) => buildNode(node, asset, i)).join('')}
   </section>`;
@@ -457,7 +469,7 @@ function buildInterlude(chapter) {
     return `<p class="interlude__line${i > 0 ? ' interlude__line--sub' : ''}">${html}</p>`;
   });
   return `
-  <section class="interlude reveal" id="${esc(chapter.id)}"
+  <section class="interlude reveal motion" id="${esc(chapter.id)}"
     data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
     <div class="interlude__inner">
       ${rendered.join('')}
@@ -472,7 +484,7 @@ function buildInterlude(chapter) {
 function buildChat(chapter) {
   const bubbles = chapter.bubbles || [];
   return `
-  <section class="chatscene reveal" id="${esc(chapter.id)}"
+  <section class="chatscene reveal motion" id="${esc(chapter.id)}"
     data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
     <div class="chatscene__box">
       <div class="chatscene__bubbles">
@@ -494,14 +506,14 @@ function buildChat(chapter) {
 /** 一起听过的歌。纯文字，撑得住篇幅，也是你们之间真实存在的东西。 */
 function buildSongs(chapter, chapterIndex) {
   return `
-  <section class="songs reveal" id="${esc(chapter.id)}"
+  <section class="songs reveal motion" id="${esc(chapter.id)}"
     data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
     ${head(chapter, chapterIndex)}
     <ol class="songs__list">
       ${(chapter.items || [])
         .map(
           (item, i) => `
-        <li class="song reveal">
+        <li class="song reveal motion" data-lag="${Math.min(0.8, i * 0.16).toFixed(2)}">
           <span class="song__index">${String(i + 1).padStart(2, '0')}</span>
           <span class="song__main">
             <span class="song__name">${esc(item.name)}</span>
@@ -524,7 +536,7 @@ function buildNode(node, asset, index) {
   }" id="${esc(node.id)}">
     ${
       images.length
-        ? `<figure class="node__media${images.length > 1 ? ' node__media--multi' : ''}">
+        ? `<figure class="node__media motion${images.length > 1 ? ' node__media--multi' : ''}" data-skew="0">
             ${images
               .map(
                 (src, i) => {
@@ -539,7 +551,7 @@ function buildNode(node, asset, index) {
           </figure>`
         : ''
     }
-    <div class="node__body">
+    <div class="node__body motion" data-lag="0.6">
       <p class="node__meta">
         ${node.date ? `<time>${esc(node.date)}</time>` : ''}
         ${node.place ? `<span class="node__place">${esc(node.place)}</span>` : ''}
@@ -555,7 +567,7 @@ function buildEnding(data) {
   const ending = data.ending || {};
   if (!ending.paragraphs?.length && !ending.title) return '';
   return `
-  <section class="ending reveal" id="ending">
+  <section class="ending reveal motion" id="ending">
     <div class="ending__rule" aria-hidden="true"></div>
     ${ending.title ? `<h2 class="ending__title">${esc(ending.title)}</h2>` : ''}
     <div class="ending__body">

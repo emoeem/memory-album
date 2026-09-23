@@ -60,6 +60,17 @@ body {
     radial-gradient(40% 35% at 78% 30%, rgba(244, 185, 66, 0.1), transparent 70%);
 }
 
+/* 走到结尾那一下：整页的雨变小、暖光起来 */
+.sky__sun {
+  position: absolute;
+  inset: 0;
+  opacity: var(--sun, 0);
+  transition: opacity 0.6s linear;
+  background:
+    radial-gradient(58% 46% at 42% 34%, rgba(244, 185, 66, 0.26), transparent 70%),
+    radial-gradient(76% 56% at 68% 62%, rgba(124, 199, 242, 0.16), transparent 72%);
+}
+
 /* 雨：两条不同疏密的细线，靠 transform 下落，代价很低 */
 .rain {
   position: absolute;
@@ -128,9 +139,14 @@ button {
 
 .cover.is-gone {
   opacity: 0;
-  transform: scale(1.045);
+  transform: scale(1.02);
   filter: blur(6px);
   pointer-events: none;
+}
+
+/* 别让"已经收起来"的封面继续占着布局，把手机页面撑宽 */
+.cover[hidden] {
+  display: none;
 }
 
 .cover__glow {
@@ -465,15 +481,34 @@ button {
 
 /* ------------------------------------------------------------ 进场动画 */
 
-.reveal {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 1s var(--ease), transform 1s var(--ease);
+/*
+ * .reveal 只负责"这一块该启动了"（里面的逐字、打字机靠它的 is-in 触发）。
+ * 真正的进出动作交给 .motion —— 它是跟着滚动位置算的，不是定时器：
+ * 她停在哪一幕，哪一幕就停在那儿，想多看一会儿就多看一会儿。
+ *
+ *   --in   0→1  斜着落下来
+ *   --out  0→1  斜着滑走、上飞、轻微缩小
+ */
+.motion {
+  opacity: calc(var(--in, 1) * (1 - var(--out, 0)));
+  transform: translate3d(
+      0,
+      calc((1 - var(--in, 1)) * 46px - var(--out, 0) * 44px),
+      0
+    )
+    skewX(calc((1 - var(--in, 1)) * 3.5deg - var(--out, 0) * 4deg))
+    scale(calc(1 - var(--in, 1) * 0.015 - var(--out, 0) * 0.03));
+  will-change: opacity, transform;
 }
 
-.reveal.is-in {
-  opacity: 1;
-  transform: none;
+/* 比一屏还高的元素（长截图那一类）只做位移和缩放，不斜切 */
+.motion.is-tall {
+  transform: translate3d(
+      0,
+      calc((1 - var(--in, 1)) * 46px - var(--out, 0) * 44px),
+      0
+    )
+    scale(calc(1 - var(--in, 1) * 0.015 - var(--out, 0) * 0.03));
 }
 
 .node__meta,
@@ -481,27 +516,19 @@ button {
 .node__text,
 .node__quote {
   opacity: 0;
-  transform: translateY(14px);
+  transform: translateY(16px);
   transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
-}
-
-.node__media {
-  opacity: 0;
-  transform: translateY(22px) scale(0.985);
-  transition: opacity 1.1s var(--ease), transform 1.1s var(--ease);
 }
 
 .node.is-in .node__meta,
 .node.is-in .node__title,
 .node.is-in .node__text,
-.node.is-in .node__quote,
-.node.is-in .node__media {
+.node.is-in .node__quote {
   opacity: 1;
   transform: none;
 }
 
-.node.is-in .node__title,
-.node.is-in .node__media {
+.node.is-in .node__title {
   transition-delay: 0.08s;
 }
 
@@ -570,7 +597,29 @@ button {
 }
 
 .emph {
+  display: inline-block;
   font-weight: 600;
+}
+
+/* 大字落下来的那一下（生日模板里那个突然放大的 "SO"） */
+.is-in .emph {
+  animation: emph-pop 1.3s var(--ease) both;
+}
+
+@keyframes emph-pop {
+  0% {
+    transform: scale(1.45) translateY(-0.05em);
+    filter: blur(9px);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.05) translateY(0);
+    filter: blur(0);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
 }
 
 /* ------------------------------------------------------------ 聊天分镜 */
@@ -728,26 +777,6 @@ button {
   color: var(--ink-soft);
 }
 
-.song.is-in:nth-child(2) {
-  transition-delay: 0.06s;
-}
-
-.song.is-in:nth-child(3) {
-  transition-delay: 0.12s;
-}
-
-.song.is-in:nth-child(4) {
-  transition-delay: 0.18s;
-}
-
-.song.is-in:nth-child(5) {
-  transition-delay: 0.24s;
-}
-
-.song.is-in:nth-child(n + 6) {
-  transition-delay: 0.3s;
-}
-
 .ending {
   position: relative;
   isolation: isolate;
@@ -756,24 +785,7 @@ button {
 }
 
 /* 走到这里，雨停了 —— 那一下放晴 */
-.ending::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -30%;
-  width: 100vw;
-  height: 180%;
-  transform: translateX(-50%);
-  pointer-events: none;
-  z-index: -1;
-  background: radial-gradient(
-      52% 42% at 42% 38%,
-      rgba(244, 185, 66, calc(0.22 * var(--sun))),
-      transparent 70%
-    ),
-    radial-gradient(70% 50% at 70% 60%, rgba(124, 199, 242, calc(0.14 * var(--sun))), transparent 72%);
-}
-
+/* 结尾的暖光已经挪到 .sky__sun（整页那一层），这里就不用再铺一块 100vw 的了 */
 .ending__rule {
   width: 56px;
   height: 1px;
@@ -1176,11 +1188,11 @@ button {
   }
 
   .reveal,
+  .motion,
   .node__meta,
   .node__title,
   .node__text,
-  .node__quote,
-  .node__media {
+  .node__quote {
     opacity: 1;
     transform: none;
   }
