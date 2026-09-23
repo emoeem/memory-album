@@ -65,10 +65,73 @@ body {
   position: absolute;
   inset: 0;
   opacity: var(--sun, 0);
-  transition: opacity 0.6s linear;
+  transition: opacity 1.2s var(--ease);
   background:
     radial-gradient(58% 46% at 42% 34%, rgba(244, 185, 66, 0.26), transparent 70%),
     radial-gradient(76% 56% at 68% 62%, rgba(124, 199, 242, 0.16), transparent 72%);
+}
+
+.sky__sun-disc {
+  position: absolute;
+  left: 50%;
+  top: 32%;
+  width: clamp(90px, 16vw, 180px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: calc(var(--sun, 0) * 0.9);
+  transform: translate(-50%, -50%) scale(calc(0.72 + var(--sun, 0) * 0.28));
+  background: radial-gradient(circle at 42% 38%, #fffdf2 0 8%, #ffe7a0 30%, rgba(244,185,66,.24) 62%, transparent 72%);
+  filter: blur(.2px);
+  box-shadow: 0 0 80px rgba(244,185,66,.28), 0 0 180px rgba(124,199,242,.18);
+  transition: opacity 1.4s var(--ease), transform 1.6s var(--ease);
+}
+
+.sky__sun-rays {
+  position: absolute;
+  inset: -15%;
+  opacity: calc(var(--sun, 0) * 0.42);
+  background: conic-gradient(from 210deg at 50% 32%, transparent 0 8%, rgba(255,247,210,.11) 11%, transparent 15% 25%, rgba(255,247,210,.08) 28%, transparent 32% 100%);
+  filter: blur(1px);
+  transition: opacity 1.2s var(--ease);
+}
+
+.sky__clouds {
+  position: absolute;
+  left: -15%;
+  width: 130%;
+  height: 30vh;
+  opacity: .34;
+  filter: blur(14px);
+  background:
+    radial-gradient(26% 70% at 12% 55%, rgba(174,208,240,.22), transparent 70%),
+    radial-gradient(34% 80% at 38% 42%, rgba(174,208,240,.16), transparent 70%),
+    radial-gradient(28% 75% at 72% 52%, rgba(174,208,240,.14), transparent 70%),
+    radial-gradient(22% 65% at 92% 38%, rgba(174,208,240,.12), transparent 70%);
+  pointer-events: none;
+  transition: opacity 1.2s var(--ease), transform 8s ease-in-out;
+}
+.sky__clouds--far { top: 4%; opacity: calc(.26 - var(--sun, 0) * .12); animation: cloud-drift 32s ease-in-out infinite alternate; }
+.sky__clouds--near { top: 20%; opacity: calc(.34 - var(--sun, 0) * .24); transform: scale(1.15); animation: cloud-drift 24s ease-in-out infinite alternate-reverse; }
+
+.sky__horizon {
+  position: absolute;
+  inset: auto -10% -4% -10%;
+  height: 42%;
+  background: linear-gradient(180deg, transparent, rgba(124,199,242,.035) 42%, rgba(244,185,66,.055));
+  opacity: calc(.75 + var(--sun, 0) * .25);
+}
+
+.sky__grain {
+  position: absolute;
+  inset: 0;
+  opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+@keyframes cloud-drift {
+  from { transform: translate3d(-2%, 0, 0) scale(1.03); }
+  to { transform: translate3d(3%, 1.5%, 0) scale(1.08); }
 }
 
 /* 雨：两条不同疏密的细线，靠 transform 下落，代价很低 */
@@ -202,6 +265,36 @@ button {
   font-size: clamp(14px, 3.6vw, 16px);
   color: var(--ink-soft);
   letter-spacing: 0.06em;
+}
+
+.cover__weather {
+  margin: 28px auto 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(174, 208, 240, .68);
+  font-size: 10px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.cover__weather-line {
+  width: 28px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(174,208,240,.5));
+}
+.cover__weather-line:last-child { transform: scaleX(-1); }
+
+.cover::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  width: min(72vw, 520px);
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(174,208,240,.18), rgba(244,185,66,.2), transparent);
+  box-shadow: 0 0 28px rgba(124,199,242,.12);
+  pointer-events: none;
 }
 
 .cover__open {

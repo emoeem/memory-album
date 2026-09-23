@@ -37,11 +37,11 @@ export default {
 
   name: 'Yales',
   cover: {
-    kicker: '这是给你的',
+    kicker: '给喜欢《天气之子》的你',
     title: 'Yales',
-    subtitle: '有一些东西，想按顺序讲给你听',
+    subtitle: '雨会停，天会晴。还有一些话，想在晴天之前给你。',
     openLabel: '开始',
-    hint: '温馨提醒：戴上耳机听会更好',
+    hint: '建议戴上耳机 · 让グランドエスケープ陪你看完',
   },
 
   // 想按章节换歌，就往 tracks 里继续加。播放时自动交叉淡入淡出，听不出接缝。

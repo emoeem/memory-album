@@ -46,8 +46,13 @@ export function buildSky() {
   return `
   <div class="sky" aria-hidden="true">
     <div class="sky__glow"></div>
+    <div class="sky__clouds sky__clouds--far"></div>
+    <div class="sky__clouds sky__clouds--near"></div>
+    <div class="sky__sun-disc"></div>
+    <div class="sky__sun-rays"></div>
     <div class="rain"></div>
-    <div class="sky__sun"></div>
+    <div class="sky__horizon"></div>
+    <div class="sky__grain"></div>
   </div>`;
 }
 
@@ -60,6 +65,11 @@ export function buildCover(data) {
       ${cover.kicker ? `<p class="cover__kicker">${esc(cover.kicker)}</p>` : ''}
       <h1 class="cover__title">${esc(cover.title || data.name || '')}</h1>
       ${cover.subtitle ? `<p class="cover__subtitle">${esc(cover.subtitle)}</p>` : ''}
+      <p class="cover__weather" aria-hidden="true">
+        <span class="cover__weather-line"></span>
+        <span>天気の子 · Weathering With You</span>
+        <span class="cover__weather-line"></span>
+      </p>
       <button class="cover__open" id="open" type="button">
         <span class="cover__open-ring" aria-hidden="true"></span>
         <span>${esc(cover.openLabel || '打开')}</span>
