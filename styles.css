@@ -1907,3 +1907,137 @@ body.is-open .deck {
     transform: none;
   }
 }
+/* Yales / Weathering With You — weather progression polish */
+:root[data-weather="rain"] .sky__clouds--near { transform: scale(1.18) translate3d(-1%, 2%, 0); }
+:root[data-weather="rain"] .sky__glow { opacity: .72; }
+:root[data-weather="cloud"] .sky__clouds { opacity: .28; }
+:root[data-weather="sunbreak"] .sky__clouds--near { opacity: .22; transform: scale(1.1) translate3d(3%, -2%, 0); }
+:root[data-weather="clear"] .sky__clouds--near { opacity: .12; transform: scale(1.06) translate3d(5%, -3%, 0); }
+:root[data-weather="clear"] .sky__horizon { background: linear-gradient(180deg, transparent, rgba(124,199,242,.06) 38%, rgba(244,185,66,.12)); }
+:root[data-weather="clear"] .sky__weather-dot { background: #ffe29a; box-shadow: 0 0 14px rgba(255,226,154,.8); }
+.sky__weather { transition: opacity 1s var(--ease), transform 1s var(--ease); }
+:root[data-weather="clear"] .sky__weather { transform: translateY(-4px); }
+
+.memory__media {
+  isolation: isolate;
+}
+.memory__media::after {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  z-index: -1;
+  border-radius: 28px;
+  background: radial-gradient(circle at 50% 35%, rgba(124,199,242,.18), transparent 68%);
+  filter: blur(24px);
+  opacity: .7;
+  transition: opacity 1s var(--ease), transform 1s var(--ease);
+}
+.slide.is-in .memory__media::after { opacity: .95; transform: scale(1.04); }
+.memory__img {
+  will-change: transform, opacity;
+  box-shadow: 0 18px 55px rgba(2,10,20,.34), 0 0 0 1px rgba(220,238,255,.09);
+}
+.memory__media--1 .memory__img { border-radius: 24px; }
+.memory__media--2 .memory__img { border-radius: 20px; }
+.memory__media--3 .memory__img { border-radius: 16px; }
+.memory__media--4 .memory__img,
+.memory__media--5 .memory__img { border-radius: 14px; }
+/* Yales / Weathering With You — weather progression polish */
+:root[data-weather="rain"] .sky__clouds--near { transform: scale(1.18) translate3d(-1%, 2%, 0); }
+:root[data-weather="rain"] .sky__glow { opacity: .72; }
+:root[data-weather="cloud"] .sky__clouds { opacity: .28; }
+:root[data-weather="sunbreak"] .sky__clouds--near { opacity: .22; transform: scale(1.1) translate3d(3%, -2%, 0); }
+:root[data-weather="clear"] .sky__clouds--near { opacity: .12; transform: scale(1.06) translate3d(5%, -3%, 0); }
+:root[data-weather="clear"] .sky__horizon { background: linear-gradient(180deg, transparent, rgba(124,199,242,.06) 38%, rgba(244,185,66,.12)); }
+:root[data-weather="clear"] .sky__weather-dot { background: #ffe29a; box-shadow: 0 0 14px rgba(255,226,154,.8); }
+.sky__weather { transition: opacity 1s var(--ease), transform 1s var(--ease); }
+:root[data-weather="clear"] .sky__weather { transform: translateY(-4px); }
+
+.memory__media {
+  isolation: isolate;
+}
+.memory__media::after {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  z-index: -1;
+  border-radius: 28px;
+  background: radial-gradient(circle at 50% 35%, rgba(124,199,242,.18), transparent 68%);
+  filter: blur(24px);
+  opacity: .7;
+  transition: opacity 1s var(--ease), transform 1s var(--ease);
+}
+.slide.is-in .memory__media::after { opacity: .95; transform: scale(1.04); }
+.memory__img {
+  will-change: transform, opacity;
+  box-shadow: 0 18px 55px rgba(2,10,20,.34), 0 0 0 1px rgba(220,238,255,.09);
+}
+.memory__media--1 .memory__img { border-radius: 24px; }
+.memory__media--2 .memory__img { border-radius: 20px; }
+.memory__media--3 .memory__img { border-radius: 16px; }
+.memory__media--4 .memory__img,
+.memory__media--5 .memory__img { border-radius: 14px; }
+/* Photo-count layouts: one large memory → two → wall → five-photo collage */
+.memory__media--1 { width: min(76vw, 760px); aspect-ratio: 4 / 5; }
+.memory__media--2 {
+  width: min(82vw, 860px); aspect-ratio: 16 / 10;
+  display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 1.8vw, 18px);
+}
+.memory__media--3 {
+  width: min(86vw, 900px); aspect-ratio: 16 / 10;
+  display: grid; grid-template-columns: 1.2fr .8fr; grid-template-rows: 1fr 1fr; gap: 12px;
+}
+.memory__media--3 .memory__img--1 { grid-row: 1 / 3; }
+.memory__media--4 {
+  width: min(88vw, 940px); aspect-ratio: 16 / 10;
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px;
+}
+.memory__media--5 {
+  width: min(90vw, 980px); aspect-ratio: 16 / 10;
+  display: grid; grid-template-columns: 1.25fr .75fr .75fr; grid-template-rows: 1fr 1fr; gap: 10px;
+}
+.memory__media--5 .memory__img--1 { grid-row: 1 / 3; }
+.memory__media--5 .memory__img--4 { grid-column: 2; grid-row: 2; }
+.memory__media--5 .memory__img--5 { grid-column: 3; grid-row: 2; }
+.memory__media--2 .memory__img,
+.memory__media--3 .memory__img,
+.memory__media--4 .memory__img,
+.memory__media--5 .memory__img {
+  width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: cover;
+}
+.ending__photos {
+  position: relative;
+  width: min(90vw, 900px);
+  height: min(46vh, 430px);
+  margin: 0 auto 24px;
+}
+.ending__photo {
+  position: absolute; width: 34%; height: 48%; object-fit: cover;
+  border: 6px solid rgba(245,249,255,.92);
+  border-bottom-width: 12px;
+  border-radius: 2px;
+  box-shadow: 0 22px 50px rgba(0,0,0,.35);
+  transform: rotate(var(--r, 0deg));
+  transition: transform .9s var(--ease), filter .9s var(--ease);
+}
+.ending__photo--1 { --r: -7deg; left: 4%; top: 12%; }
+.ending__photo--2 { --r: 5deg; left: 27%; top: 1%; }
+.ending__photo--3 { --r: -2deg; right: 25%; top: 17%; }
+.ending__photo--4 { --r: 7deg; right: 4%; top: 4%; }
+.ending__photo--5 { --r: -4deg; left: 34%; bottom: 0; z-index: 2; }
+.slide.is-in .ending__photo:hover { transform: rotate(0deg) translateY(-5px) scale(1.025); }
+@media (max-width: 700px) {
+  .memory__media--1 { width: min(82vw, 430px); }
+  .memory__media--2,
+  .memory__media--3,
+  .memory__media--4,
+  .memory__media--5 { width: 88vw; gap: 7px; }
+  .memory__media--3,
+  .memory__media--4 { aspect-ratio: 4 / 3; }
+  .memory__media--5 { aspect-ratio: 1 / 1; }
+  .ending__photos { width: 92vw; height: 36vh; min-height: 250px; }
+  .ending__photo { border-width: 4px 4px 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .memory__img, .ending__photo { will-change: auto; }
+}

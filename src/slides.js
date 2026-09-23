@@ -166,13 +166,33 @@ export function mountSlides(app, data, ROOT) {
   }
 
   function applySun() {
-    // 最后那一段雨慢慢停、天色慢慢暖
-    const start = total * 0.68;
-    const span = Math.max(1, total * 0.24);
-    const sun = Math.min(1, Math.max(0, (index - start) / span));
+    // 不只按进度变天：让“雨 → 云隙 → 夏日晴空”成为叙事的一部分。
+    const slide = slides[index];
+    const id = slide?.chapter?.id || '';
+    const kind = slide?.kind || '';
+    const explicit = {
+      rain: 0.06,
+      'blessing-1': 0.34,
+      songs: 0.46,
+      chat: 0.58,
+      'blessing-2': 0.68,
+      clear: 0.82,
+      'blessing-3': 0.9,
+      c4: 0.94,
+      now: 0.97,
+      ending: 1,
+    };
+    const start = total * 0.48;
+    const span = Math.max(1, total * 0.48);
+    let sun = Math.min(1, Math.max(0, (index - start) / span));
+    if (Object.prototype.hasOwnProperty.call(explicit, id)) sun = explicit[id];
+    if (kind === 'interlude' && id === 'rain') sun = 0.04;
+    if (kind === 'songs') sun = Math.max(sun, 0.46);
     setSun(document.documentElement, sun);
-    if (weatherValue) weatherValue.textContent = sun < .28 ? '雨中' : sun < .68 ? '云隙' : '放晴';
-    if (weatherLabel) weatherLabel.textContent = sun < .68 ? 'RAIN' : 'CLEAR';
+    const weather = sun < 0.18 ? ['RAIN', '雨中'] : sun < 0.48 ? ['CLOUD', '云隙'] : sun < 0.78 ? ['SUNBREAK', '云开'] : ['CLEAR', '放晴'];
+    if (weatherValue) weatherValue.textContent = weather[1];
+    if (weatherLabel) weatherLabel.textContent = weather[0];
+    document.documentElement.dataset.weather = weather[0].toLowerCase();
   }
 
   function updateDeck() {
