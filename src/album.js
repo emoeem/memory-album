@@ -4,6 +4,36 @@ import { photoSizes } from './data/photo-sizes.js';
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
+/**
+ * 把一句话拆成一个字一个字的 span，滚到时依次浮现。
+ * 用 ** 包起来的部分会变成大字（参考生日模板里那个突然放大的 "SO"）。
+ */
+function richChars(text, startIndex = 0) {
+  let i = startIndex;
+  return String(text ?? '')
+    .split('**')
+    .map((part, index) => {
+      const emph = index % 2 === 1;
+      return Array.from(part)
+        .map((char) => {
+          const body = char === ' ' ? '&#160;' : esc(char);
+          const span = `<span class="char${emph ? ' char--emph' : ''}" style="--i:${i}">${body}</span>`;
+          i += 1;
+          return span;
+        })
+        .join('');
+    })
+    .join('');
+}
+
+/** 段落里的 ** 强调，不拆字 */
+function richInline(text) {
+  return String(text ?? '')
+    .split('**')
+    .map((part, index) => (index % 2 === 1 ? `<strong class="emph">${esc(part)}</strong>` : esc(part)))
+    .join('');
+}
+
 const reducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -14,6 +44,7 @@ export function mount(app, data, ROOT) {
   const audio = createAudio({
     ...data.bgm,
     src: data.bgm?.src ? asset(data.bgm.src) : '',
+    tracks: data.bgm?.tracks?.map((track) => ({ ...track, src: asset(track.src) })),
   });
   const chapters = data.chapters || [];
 
@@ -58,6 +89,13 @@ export function mount(app, data, ROOT) {
   page.addEventListener('click', (event) => {
     if (!opened && event.target.closest('a')) open();
   });
+
+  // 首次交互先把音乐缓冲起来，别等点开了才开始下载
+  ['pointerdown', 'touchstart', 'keydown'].forEach((type) =>
+    window.addEventListener(type, () => audio.warm(), { once: true, passive: true }),
+  );
+  // 等首屏和第一张图先站稳，再在后台悄悄缓冲音乐
+  window.addEventListener('load', () => window.setTimeout(() => audio.warm(), 2500));
 
   /* ---------- 音乐按钮 ---------- */
   function updateMusicButton() {
@@ -114,10 +152,11 @@ export function mount(app, data, ROOT) {
 
   /* ---------- 进场动画 ---------- */
   const revealTargets = $$('.reveal');
+  let revealObserver = null;
   if (reducedMotion()) {
     revealTargets.forEach((el) => el.classList.add('is-in'));
   } else {
-    const revealObserver = new IntersectionObserver(
+    revealObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
@@ -131,8 +170,55 @@ export function mount(app, data, ROOT) {
     revealTargets.forEach((el) => revealObserver.observe(el));
   }
 
+  /* ---------- 聊天分镜：一个字一个字打出来 ---------- */
+  const chatScenes = $$('.chatscene');
+  function typeChat(scene) {
+    if (scene.dataset.typed === '1') return;
+    scene.dataset.typed = '1';
+    const bubbles = Array.from(scene.querySelectorAll('.bubble'));
+    let delay = 0;
+    bubbles.forEach((bubble) => {
+      const target = bubble.querySelector('.bubble__typed');
+      const text = bubble.dataset.type || '';
+      const chars = Array.from(text);
+      const per = reducedMotion() ? 0 : 55;
+      window.setTimeout(() => bubble.classList.add('is-typing'), delay);
+      chars.forEach((char, i) => {
+        window.setTimeout(() => {
+          target.textContent = chars.slice(0, i + 1).join('');
+        }, delay + per * (i + 1));
+      });
+      const total = delay + per * chars.length;
+      window.setTimeout(() => {
+        bubble.classList.remove('is-typing');
+        bubble.classList.add('is-done');
+      }, total + 220);
+      delay = total + 420;
+    });
+    window.setTimeout(() => scene.classList.add('is-sent'), delay + 200);
+  }
+
+  if (chatScenes.length) {
+    if (reducedMotion()) {
+      chatScenes.forEach(typeChat);
+    } else {
+      const chatObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              typeChat(entry.target);
+              chatObserver.unobserve(entry.target);
+            }
+          });
+        },
+        { rootMargin: '0px 0px -25% 0px', threshold: 0.3 },
+      );
+      chatScenes.forEach((scene) => chatObserver.observe(scene));
+    }
+  }
+
   /* ---------- 时间线：当前读到哪 ---------- */
-  const nodes = $$('.node');
+  const nodes = $$('.node, .interlude, .songs, .chatscene');
   const ticks = new Map(
     $$('.timeline__tick').map((el) => [el.dataset.target, el]),
   );
@@ -144,12 +230,12 @@ export function mount(app, data, ROOT) {
     activeId = id;
     ticks.forEach((tick, key) => tick.classList.toggle('is-active', key === id));
     const node = document.getElementById(id);
-    const chapterId = node?.closest('.chapter')?.id;
+    const chapter = node?.closest('.chapter, .interlude, .songs');
+    const chapterId = chapter?.id;
     chapterLinks.forEach((link) => {
       link.classList.toggle('is-active', link.dataset.chapter === chapterId);
     });
-    if (topLabel && node) {
-      const chapter = node.closest('.chapter');
+    if (topLabel && chapter) {
       const date = chapter?.dataset.date || '';
       const label = chapter?.dataset.label || '';
       topLabel.textContent = [label, date].filter(Boolean).join(' · ');
@@ -218,6 +304,30 @@ export function mount(app, data, ROOT) {
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll, { passive: true });
   onScroll();
+
+  /* ---------- 结尾的"再看一遍" ---------- */
+  const replayButton = $('#replay');
+  replayButton?.addEventListener('click', () => {
+    // 让所有进场动画可以重新播一次
+    revealTargets.forEach((el) => el.classList.remove('is-in'));
+    if (revealObserver) revealTargets.forEach((el) => revealObserver.observe(el));
+
+    chatScenes.forEach((scene) => {
+      scene.dataset.typed = '0';
+      scene.classList.remove('is-sent');
+      scene.querySelectorAll('.bubble').forEach((bubble) => {
+        bubble.classList.remove('is-done', 'is-typing');
+        const typed = bubble.querySelector('.bubble__typed');
+        if (typed) typed.textContent = '';
+      });
+    });
+
+    lastSun = -1;
+    audio.seek(0);
+    audio.play();
+    window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
+    onScroll();
+  });
 
   return { audio, open };
 }
@@ -290,7 +400,17 @@ function buildPage(data, chapters, asset) {
     )
     .join('');
 
-  const body = chapters.map((chapter, chapterIndex) => buildChapter(chapter, asset, chapterIndex)).join('');
+  // 停顿页不占章节编号，所以单独数一遍
+  let headNo = 0;
+  const body = chapters
+    .map((chapter) => {
+      if (chapter.kind === 'interlude') return buildInterlude(chapter);
+      if (chapter.kind === 'chat') return buildChat(chapter);
+      headNo += 1;
+      if (chapter.kind === 'songs') return buildSongs(chapter, headNo - 1);
+      return buildChapter(chapter, asset, headNo - 1);
+    })
+    .join('');
 
   return `
   <div class="page" id="page" aria-hidden="true">
@@ -303,27 +423,101 @@ function buildPage(data, chapters, asset) {
       ${body}
       ${buildEnding(data)}
       <footer class="colophon">
-        <button class="scroll-cue" type="button" data-target="${esc(chapters[0]?.id || '')}">回到开头</button>
+        <button class="scroll-cue" id="replay" type="button">再看一遍</button>
       </footer>
     </main>
   </div>`;
 }
 
+function head(chapter, chapterIndex) {
+  return `
+    <header class="chapter__head reveal">
+      <p class="chapter__index">${String(chapterIndex + 1).padStart(2, '0')}</p>
+      ${chapter.date ? `<p class="chapter__date">${esc(chapter.date)}</p>` : ''}
+      <h2 class="chapter__label">${esc(chapter.label || '')}</h2>
+      ${chapter.intro ? `<p class="chapter__intro">${esc(chapter.intro)}</p>` : ''}
+    </header>`;
+}
+
 function buildChapter(chapter, asset, chapterIndex) {
   return `
   <section class="chapter reveal" id="${esc(chapter.id)}" data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
-    <header class="chapter__head reveal">
-      <p class="chapter__index">${String(chapterIndex + 1).padStart(2, '0')}</p>
-      <p class="chapter__date">${esc(chapter.date || '')}</p>
-      <h2 class="chapter__label">${esc(chapter.label || '')}</h2>
-      ${chapter.intro ? `<p class="chapter__intro">${esc(chapter.intro)}</p>` : ''}
-    </header>
+    ${head(chapter, chapterIndex)}
     ${(chapter.nodes || []).map((node, i) => buildNode(node, asset, i)).join('')}
+  </section>`;
+}
+
+/** 停顿页：一整屏只放一两句话，逐字浮现。不需要图，用来给整篇留呼吸和分量。 */
+function buildInterlude(chapter) {
+  const lines = chapter.lines || [];
+  let cursor = 0;
+  const rendered = lines.map((line, i) => {
+    const html = richChars(line, cursor);
+    cursor += Array.from(String(line).replace(/\*\*/g, '')).length + 6;
+    return `<p class="interlude__line${i > 0 ? ' interlude__line--sub' : ''}">${html}</p>`;
+  });
+  return `
+  <section class="interlude reveal" id="${esc(chapter.id)}"
+    data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
+    <div class="interlude__inner">
+      ${rendered.join('')}
+    </div>
+  </section>`;
+}
+
+/**
+ * 聊天气泡分镜：滚到这里，话一个字一个字打出来，最后冒出"发送"。
+ * 参考生日模板里那个聊天框，只是内容换成你们自己的。
+ */
+function buildChat(chapter) {
+  const bubbles = chapter.bubbles || [];
+  return `
+  <section class="chatscene reveal" id="${esc(chapter.id)}"
+    data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
+    <div class="chatscene__box">
+      <div class="chatscene__bubbles">
+        ${bubbles
+          .map(
+            (bubble, i) => `
+          <p class="bubble bubble--${bubble.side === 'me' ? 'me' : 'you'}"
+             data-type="${esc(bubble.text)}" style="--row:${i}">
+            <span class="bubble__typed"></span><span class="bubble__caret" aria-hidden="true"></span>
+          </p>`,
+          )
+          .join('')}
+      </div>
+      ${chapter.sendLabel ? `<span class="chatscene__send">${esc(chapter.sendLabel)}</span>` : ''}
+    </div>
+  </section>`;
+}
+
+/** 一起听过的歌。纯文字，撑得住篇幅，也是你们之间真实存在的东西。 */
+function buildSongs(chapter, chapterIndex) {
+  return `
+  <section class="songs reveal" id="${esc(chapter.id)}"
+    data-date="${esc(chapter.date || '')}" data-label="${esc(chapter.label || '')}">
+    ${head(chapter, chapterIndex)}
+    <ol class="songs__list">
+      ${(chapter.items || [])
+        .map(
+          (item, i) => `
+        <li class="song reveal">
+          <span class="song__index">${String(i + 1).padStart(2, '0')}</span>
+          <span class="song__main">
+            <span class="song__name">${esc(item.name)}</span>
+            ${item.artist ? `<span class="song__artist">${esc(item.artist)}</span>` : ''}
+          </span>
+          ${item.note ? `<span class="song__note">${esc(item.note)}</span>` : ''}
+        </li>`,
+        )
+        .join('')}
+    </ol>
   </section>`;
 }
 
 function buildNode(node, asset, index) {
   const images = (node.images || []).filter(Boolean);
+  const lines = node.lines || (node.text ? [node.text] : []);
   return `
   <article class="node reveal ${index % 2 === 1 ? 'node--flip' : ''} ${
     images.length > 1 ? 'node--multi' : ''
@@ -351,8 +545,8 @@ function buildNode(node, asset, index) {
         ${node.place ? `<span class="node__place">${esc(node.place)}</span>` : ''}
       </p>
       ${node.title ? `<h3 class="node__title">${esc(node.title)}</h3>` : ''}
-      ${node.text ? `<p class="node__text">${esc(node.text)}</p>` : ''}
-      ${node.quote ? `<p class="node__quote">${esc(node.quote)}</p>` : ''}
+      ${lines.map((line) => `<p class="node__text">${richInline(line)}</p>`).join('')}
+      ${node.quote ? `<p class="node__quote">${richInline(node.quote)}</p>` : ''}
     </div>
   </article>`;
 }

@@ -46,7 +46,11 @@ for (const viewport of VIEWPORTS) {
     }
   });
   page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
-  page.on('requestfailed', (req) => problems.push(`requestfailed: ${req.url()}`));
+  page.on('requestfailed', (req) => {
+    // 切页面时被中断的媒体请求不算问题
+    const reason = req.failure()?.errorText || '';
+    if (!reason.includes('ERR_ABORTED')) problems.push(`requestfailed: ${req.url()} (${reason})`);
+  });
   page.on('response', (res) => {
     if (res.status() >= 400) problems.push(`HTTP ${res.status()}: ${res.url()}`);
   });
@@ -84,10 +88,17 @@ for (const viewport of VIEWPORTS) {
   if (!afterOpen.musicVisible) problems.push('音乐按钮没有出现');
   if (!afterOpen.audioPlaying) problems.push('音乐没有进入播放状态');
   const audioState = await page.evaluate(() => {
-    const el = window.__memoryAlbum?.audio?.element;
-    return el
-      ? { paused: el.paused, time: Number(el.currentTime.toFixed(2)), readyState: el.readyState, duration: Math.round(el.duration || 0) }
-      : null;
+    const audio = window.__memoryAlbum?.audio;
+    const state = audio?.state?.();
+    if (!state) return null;
+    return {
+      paused: state.paused,
+      time: state.time,
+      readyState: state.element?.readyState ?? -1,
+      duration: state.duration,
+      slot: state.slot,
+      crossfade: state.crossfade,
+    };
   });
   if (!audioState) problems.push('拿不到音频元素');
   else {
@@ -96,6 +107,33 @@ for (const viewport of VIEWPORTS) {
       problems.push(`音乐时长不对: ${audioState.duration}s`);
     }
     if (audioState.duration && audioState.time <= 0) problems.push('音乐播到了 0 秒');
+  }
+
+  // 歌曲短也没关系：快进到接缝处，应该自动交叉淡入淡出接到下一遍，不能断
+  const loopTest = await page.evaluate(async () => {
+    const audio = window.__memoryAlbum?.audio;
+    if (!audio) return null;
+    const before = audio.state();
+    audio.seek(before.duration - before.crossfade - 1);
+    await new Promise((r) => setTimeout(r, 4000));
+    const after = audio.state();
+    return {
+      slotBefore: before.slot,
+      slotAfter: after.slot,
+      paused: after.paused,
+      time: after.time,
+      volume: after.volume,
+    };
+  });
+  if (!loopTest) problems.push('拿不到循环测试结果');
+  else {
+    if (loopTest.paused) problems.push('跨到下一遍之后音乐停了');
+    if (loopTest.slotBefore === loopTest.slotAfter) {
+      problems.push('接缝处没有做交叉淡入淡出');
+    }
+    if (loopTest.time > 20) {
+      problems.push(`接缝处没有从头接上 (${loopTest.time}s)`);
+    }
   }
   await page.screenshot({ path: join(OUT, `${viewport.name}-2-opened.png`) });
 
@@ -158,8 +196,51 @@ for (const viewport of VIEWPORTS) {
       pageHeight: document.documentElement.scrollHeight,
       sun: getComputedStyle(document.documentElement).getPropertyValue('--sun').trim(),
       rainOpacity: getComputedStyle(document.querySelector('.rain')).opacity,
+      counts: {
+        photos: document.querySelectorAll('.node__img').length,
+        chapters: document.querySelectorAll('.chapter').length,
+        interludes: document.querySelectorAll('.interlude').length,
+        songs: document.querySelectorAll('.song').length,
+        nodes: document.querySelectorAll('.node').length,
+        chars: document.querySelectorAll('.char').length,
+        emph: document.querySelectorAll('.char--emph, .emph').length,
+        chats: document.querySelectorAll('.chatscene').length,
+      },
     };
   });
+
+  // 聊天分镜的打字需要几秒，等它打完再判
+  if (scrollReport.counts.chats > 0) {
+    await page.waitForSelector('.chatscene.is-sent', { timeout: 20000 }).catch(() => {});
+  }
+  const chatState = await page.evaluate(() => {
+    const scenes = Array.from(document.querySelectorAll('.chatscene'));
+    const bubbles = Array.from(document.querySelectorAll('.bubble__typed'));
+    return {
+      scenes: scenes.length,
+      sent: scenes.filter((el) => el.classList.contains('is-sent')).length,
+      typed: bubbles.map((el) => el.textContent.length),
+      expected: bubbles.map((el) => el.closest('.bubble')?.dataset.type?.length ?? 0),
+    };
+  });
+
+  if (chatState.scenes < 1) problems.push('没有聊天分镜');
+  if (chatState.sent !== chatState.scenes) {
+    problems.push(`聊天分镜没有出现"发送" (${chatState.sent}/${chatState.scenes})`);
+  }
+  chatState.typed.forEach((len, i) => {
+    if (len < chatState.expected[i]) {
+      problems.push(`气泡没打完：${len}/${chatState.expected[i]} 字`);
+    }
+  });
+
+  if (scrollReport.counts.chars < 10) problems.push('停顿页没有逐字浮现');
+  if (scrollReport.counts.emph < 1) problems.push('没有大字强调');
+  if (scrollReport.counts.photos < 19) {
+    problems.push(`有照片没用上：只呈现了 ${scrollReport.counts.photos} 张`);
+  }
+  if (scrollReport.counts.interludes < 1) problems.push('没有停顿页');
+  if (scrollReport.counts.songs < 1) problems.push('没有歌单章节');
 
   if (Number(scrollReport.sun) < 0.9) {
     problems.push(`滚到底没有放晴 (--sun=${scrollReport.sun})`);
@@ -168,6 +249,8 @@ for (const viewport of VIEWPORTS) {
     problems.push(`结尾雨没停 (opacity=${scrollReport.rainOpacity})`);
   }
   scrollReport.audio = audioState;
+  scrollReport.loopTest = loopTest;
+  scrollReport.chatState = chatState;
   scrollReport.skyStart = skyStart;
 
   const brokenImages = scrollReport.images.filter((img) => !img.ok);
@@ -266,6 +349,15 @@ for (const entry of report) {
   );
   console.log(
     `天色 开头 --sun=${entry.skyStart?.sun} 雨=${entry.skyStart?.rainOpacity} → 结尾 --sun=${entry.sun} 雨=${entry.rainOpacity}`,
+  );
+  console.log(
+    `素材 照片 ${entry.counts?.photos} 张 / 章节 ${entry.counts?.chapters} / 停顿页 ${entry.counts?.interludes} / 歌 ${entry.counts?.songs}`,
+  );
+  console.log(
+    `接缝 槽位 ${entry.loopTest?.slotBefore}→${entry.loopTest?.slotAfter} 跳到 ${entry.loopTest?.time}s 音量 ${entry.loopTest?.volume}`,
+  );
+  console.log(
+    `分镜 逐字 span ${entry.counts?.chars} / 大字 ${entry.counts?.emph} / 聊天 ${entry.chatState?.sent}/${entry.chatState?.scenes} 打字 ${entry.chatState?.typed?.join(',')} 期望 ${entry.chatState?.expected?.join(',')}`,
   );
   console.log(entry.problems.length ? `问题:\n  - ${entry.problems.join('\n  - ')}` : '✅ 没有发现问题');
 }

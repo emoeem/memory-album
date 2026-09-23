@@ -5,7 +5,8 @@
  *   node scripts/dev.mjs 4000 ./dist        → 指定要服务的目录（用来试打包结果）
  */
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,12 +55,39 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    const body = await readFile(filePath);
+    const type =
+      TYPES[extname(filePath).toLowerCase()] || 'application/octet-stream';
+    const size = info.size;
+
+    // 支持 Range：不然浏览器只能缓冲几秒、音频没法跳转，
+    // 本地预览就会和 GitHub Pages 上的表现不一致
+    const range = req.headers.range;
+    const match = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+    if (match) {
+      const start = match[1] ? Number(match[1]) : 0;
+      const end = match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+      if (start >= size || start > end) {
+        res.writeHead(416, { 'content-range': `bytes */${size}` }).end();
+        return;
+      }
+      res.writeHead(206, {
+        'content-type': type,
+        'content-length': end - start + 1,
+        'content-range': `bytes ${start}-${end}/${size}`,
+        'accept-ranges': 'bytes',
+        'cache-control': 'no-store',
+      });
+      createReadStream(filePath, { start, end }).pipe(res);
+      return;
+    }
+
     res.writeHead(200, {
-      'content-type': TYPES[extname(filePath).toLowerCase()] || 'application/octet-stream',
+      'content-type': type,
+      'content-length': size,
+      'accept-ranges': 'bytes',
       'cache-control': 'no-store',
     });
-    res.end(body);
+    createReadStream(filePath).pipe(res);
   } catch (error) {
     res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' }).end(String(error));
   }

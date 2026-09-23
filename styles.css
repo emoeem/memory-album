@@ -515,6 +515,239 @@ button {
 
 /* ------------------------------------------------------------------ 结尾 */
 
+/* ---------------------------------------------------------------- 停顿页 */
+
+.interlude {
+  display: grid;
+  place-items: center;
+  min-height: 74vh;
+  margin: clamp(70px, 15vw, 190px) 0;
+  text-align: center;
+}
+
+.interlude__inner {
+  max-width: 30em;
+}
+
+.interlude__line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(21px, 5.4vw, 36px);
+  line-height: 1.95;
+  letter-spacing: 0.04em;
+  text-wrap: balance;
+}
+
+.interlude__line--sub {
+  margin-top: 20px;
+  font-size: clamp(14px, 3.6vw, 18px);
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+}
+
+/* 一个字一个字浮出来（参考生日模板那种一格一格推的节奏） */
+.char {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(9px);
+  transform: translateY(0.22em);
+  transition: opacity 0.7s var(--ease), filter 0.7s var(--ease),
+    transform 0.7s var(--ease);
+  transition-delay: calc(var(--i, 0) * 42ms);
+}
+
+.is-in .char {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+.char--emph,
+.emph {
+  font-size: 1.24em;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.emph {
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------ 聊天分镜 */
+
+.chatscene {
+  display: grid;
+  place-items: center;
+  min-height: 72vh;
+  margin: clamp(70px, 14vw, 180px) 0;
+}
+
+.chatscene__box {
+  width: min(100%, 430px);
+  padding: 22px 20px 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(16, 29, 51, 0.72);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 30px 70px rgba(4, 10, 20, 0.5);
+}
+
+.chatscene__bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 116px;
+}
+
+.bubble {
+  margin: 0;
+  max-width: 86%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: clamp(14px, 3.8vw, 16px);
+  line-height: 1.8;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+}
+
+.chatscene.is-in .bubble {
+  opacity: 1;
+  transform: none;
+}
+
+.bubble--you {
+  align-self: flex-start;
+  background: rgba(174, 208, 240, 0.14);
+  border-bottom-left-radius: 6px;
+}
+
+.bubble--me {
+  align-self: flex-end;
+  background: rgba(244, 185, 66, 0.16);
+  border-bottom-right-radius: 6px;
+}
+
+.bubble__caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  background: currentColor;
+  vertical-align: -0.15em;
+  opacity: 0;
+}
+
+.bubble.is-typing .bubble__caret {
+  opacity: 1;
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.chatscene__send {
+  display: block;
+  width: fit-content;
+  margin: 18px 0 0 auto;
+  padding: 9px 22px;
+  border-radius: 999px;
+  background: rgba(244, 185, 66, 0.92);
+  color: #1a1206;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+}
+
+.chatscene.is-sent .chatscene__send {
+  opacity: 1;
+  transform: none;
+}
+
+/* ------------------------------------------------------------ 一起听过的歌 */
+
+.songs {
+  margin-bottom: clamp(80px, 14vw, 170px);
+}
+
+.songs__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.song {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 22px;
+  align-items: baseline;
+  padding: clamp(18px, 4vw, 26px) 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+.song__index {
+  font-family: var(--serif);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.song__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.song__name {
+  font-family: var(--serif);
+  font-size: clamp(17px, 4.2vw, 21px);
+  letter-spacing: 0.02em;
+}
+
+.song__artist {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--ink-mute);
+}
+
+.song__note {
+  grid-column: 2;
+  margin-top: 6px;
+  max-width: 34em;
+  font-size: clamp(13px, 3.4vw, 15px);
+  line-height: 1.95;
+  color: var(--ink-soft);
+}
+
+.song.is-in:nth-child(2) {
+  transition-delay: 0.06s;
+}
+
+.song.is-in:nth-child(3) {
+  transition-delay: 0.12s;
+}
+
+.song.is-in:nth-child(4) {
+  transition-delay: 0.18s;
+}
+
+.song.is-in:nth-child(5) {
+  transition-delay: 0.24s;
+}
+
+.song.is-in:nth-child(n + 6) {
+  transition-delay: 0.3s;
+}
+
 .ending {
   position: relative;
   isolation: isolate;
