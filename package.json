@@ -1,0 +1,15 @@
+{
+  "name": "memory-album",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "一份写给朋友的回忆录 —— 数据驱动，一个链接对应一个人",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "photos": "node scripts/optimize-photos.mjs",
+    "links": "node scripts/make-links.mjs",
+    "og": "node scripts/make-og.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check-layout.mjs"
+  }
+}

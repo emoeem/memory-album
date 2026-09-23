@@ -1,0 +1,162 @@
+{
+  "yales": {
+    "source": "/home/emo/Downloads/yales",
+    "generatedAt": "2026-09-23T07:31:06.394Z",
+    "width": 1080,
+    "quality": 78,
+    "photos": [
+      {
+        "id": "p01",
+        "file": "p01.webp",
+        "original": "IMG_20260923_151715_458.jpg",
+        "width": "1080",
+        "height": "1920",
+        "size": "72288B"
+      },
+      {
+        "id": "p02",
+        "file": "p02.webp",
+        "original": "IMG_20260923_151716_405.jpg",
+        "width": "1080",
+        "height": "1920",
+        "size": "57176B"
+      },
+      {
+        "id": "p03",
+        "file": "p03.webp",
+        "original": "IMG_20260923_151719_944.jpg",
+        "width": "1080",
+        "height": "1920",
+        "size": "37882B"
+      },
+      {
+        "id": "p04",
+        "file": "p04.webp",
+        "original": "IMG_20260923_151722_063.jpg",
+        "width": "1080",
+        "height": "1920",
+        "size": "37400B"
+      },
+      {
+        "id": "p05",
+        "file": "p05.webp",
+        "original": "IMG_20260923_151724_634.jpg",
+        "width": "1080",
+        "height": "1920",
+        "size": "43824B"
+      },
+      {
+        "id": "p06",
+        "file": "p06.webp",
+        "original": "IMG_20260923_151725_993.jpg",
+        "width": "1080",
+        "height": "1920",
+        "size": "48072B"
+      },
+      {
+        "id": "p07",
+        "file": "p07.webp",
+        "original": "Screenshot_2026-09-23-15-18-22-20_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "132156B"
+      },
+      {
+        "id": "p08",
+        "file": "p08.webp",
+        "original": "Screenshot_2026-09-23-15-18-28-09_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "91234B"
+      },
+      {
+        "id": "p09",
+        "file": "p09.webp",
+        "original": "Screenshot_2026-09-23-15-18-30-98_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "78164B"
+      },
+      {
+        "id": "p10",
+        "file": "p10.webp",
+        "original": "Screenshot_2026-09-23-15-18-36-49_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "107454B"
+      },
+      {
+        "id": "p11",
+        "file": "p11.webp",
+        "original": "Screenshot_2026-09-23-15-18-41-09_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "65518B"
+      },
+      {
+        "id": "p12",
+        "file": "p12.webp",
+        "original": "Screenshot_2026-09-23-15-18-45-13_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "87210B"
+      },
+      {
+        "id": "p13",
+        "file": "p13.webp",
+        "original": "Screenshot_2026-09-23-15-18-52-87_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "94328B"
+      },
+      {
+        "id": "p14",
+        "file": "p14.webp",
+        "original": "Screenshot_2026-09-23-15-18-58-34_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "123830B"
+      },
+      {
+        "id": "p15",
+        "file": "p15.webp",
+        "original": "Screenshot_2026-09-23-15-19-01-62_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "88306B"
+      },
+      {
+        "id": "p16",
+        "file": "p16.webp",
+        "original": "Screenshot_2026-09-23-15-19-19-54_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "62870B"
+      },
+      {
+        "id": "p17",
+        "file": "p17.webp",
+        "original": "Screenshot_2026-09-23-15-19-23-45_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "126852B"
+      },
+      {
+        "id": "p18",
+        "file": "p18.webp",
+        "original": "Screenshot_2026-09-23-15-19-35-07_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "86242B"
+      },
+      {
+        "id": "p19",
+        "file": "p19.webp",
+        "original": "Screenshot_2026-09-23-15-19-40-63_org.telegram.messenger.png",
+        "width": "1080",
+        "height": "2376",
+        "size": "68224B"
+      }
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+// 由 scripts/optimize-photos.mjs 生成，不要手改。
+// 用途：给 <img> 补上 width/height，图片没加载出来之前就先占好位置，页面不会跳。
+export const photoSizes = {
+  'photos/yales/p01.webp': [1080, 1920],
+  'photos/yales/p02.webp': [1080, 1920],
+  'photos/yales/p03.webp': [1080, 1920],
+  'photos/yales/p04.webp': [1080, 1920],
+  'photos/yales/p05.webp': [1080, 1920],
+  'photos/yales/p06.webp': [1080, 1920],
+  'photos/yales/p07.webp': [1080, 2376],
+  'photos/yales/p08.webp': [1080, 2376],
+  'photos/yales/p09.webp': [1080, 2376],
+  'photos/yales/p10.webp': [1080, 2376],
+  'photos/yales/p11.webp': [1080, 2376],
+  'photos/yales/p12.webp': [1080, 2376],
+  'photos/yales/p13.webp': [1080, 2376],
+  'photos/yales/p14.webp': [1080, 2376],
+  'photos/yales/p15.webp': [1080, 2376],
+  'photos/yales/p16.webp': [1080, 2376],
+  'photos/yales/p17.webp': [1080, 2376],
+  'photos/yales/p18.webp': [1080, 2376],
+  'photos/yales/p19.webp': [1080, 2376],
+};
