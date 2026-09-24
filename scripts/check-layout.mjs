@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const OUT = join(ROOT, '.checks');
 const URL_BASE = process.env.URL_BASE || 'http://127.0.0.1:5173';
+// 查哪一份：默认 yales。换个人就 ALBUM_SLUG=wuling
+const SLUG = process.env.ALBUM_SLUG || 'yales';
 const PLAYWRIGHT =
   process.env.PLAYWRIGHT_PATH || '/home/emo/code/telegram-bot/node_modules/playwright/index.js';
 const CHROME =
@@ -30,6 +32,12 @@ const VIEWPORTS = [
   { name: 'tablet', width: 834, height: 1112, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   { name: 'desktop', width: 1440, height: 900, deviceScaleFactor: 1 },
 ];
+
+/** 页面底色是不是深色：只用来确认外部样式真的加载上了 */
+const isDark = (rgb) => {
+  const parts = String(rgb).match(/\d+/g);
+  return parts ? parts.slice(0, 3).reduce((sum, n) => sum + Number(n), 0) < 180 : false;
+};
 
 const browser = await chromium.launch({
   executablePath: CHROME,
@@ -56,7 +64,7 @@ for (const viewport of VIEWPORTS) {
     if (res.status() >= 400) problems.push(`HTTP ${res.status()}: ${res.url()}`);
   });
 
-  await page.goto(`${URL_BASE}/?u=yales`, { waitUntil: 'load' });
+  await page.goto(`${URL_BASE}/?u=${SLUG}`, { waitUntil: 'load' });
   await page.waitForSelector('.cover__title');
 
   /* ---------- 1. 封面 ---------- */
@@ -67,7 +75,9 @@ for (const viewport of VIEWPORTS) {
     activeSlides: document.querySelectorAll('.slide.is-active').length,
   }));
   if (!coverState.title) problems.push('封面没有渲染出名字');
-  if (coverState.bodyBg !== 'rgb(10, 21, 38)') problems.push(`样式没生效 (bg=${coverState.bodyBg})`);
+  // 每份的主题底色不一样（雨夜深蓝 / 深夜场近黑），
+  // 所以只验"确实是深色"，不写死具体色值
+  if (!isDark(coverState.bodyBg)) problems.push(`样式没生效 (bg=${coverState.bodyBg})`);
   if (coverState.activeSlides !== 0) problems.push('还没开始就有幕在显示了');
   await page.screenshot({ path: join(OUT, `${viewport.name}-1-cover.png`) });
 
@@ -90,9 +100,8 @@ for (const viewport of VIEWPORTS) {
   if (!opened.deckVisible) problems.push('控制条没有出现');
   if (opened.active !== 1) problems.push(`应该只有一幕在显示，现在有 ${opened.active}`);
   if (opened.audioPaused) problems.push('音乐没有开始播');
-  if (opened.audioDuration && Math.abs(opened.audioDuration - 308) > 3) {
-    problems.push(`音乐时长不对: ${opened.audioDuration}s`);
-  }
+  // 时长取决于每个人配的曲子，不写死；这里只确认音乐真的加载出来了
+  if (!opened.audioDuration) problems.push('背景音乐没有加载出来');
   if (!opened.hasGo) problems.push('拿不到播放控制接口');
   if (!opened.noScroll) problems.push('单屏模式下页面还能滚动');
   await page.screenshot({ path: join(OUT, `${viewport.name}-2-first-slide.png`) });
@@ -198,7 +207,26 @@ for (const viewport of VIEWPORTS) {
   // 两种都算"照片幕"，不然这套检查会报"有照片没用上"的假警。
   const photoSlides = walk.filter((s) => s.kind === 'image' || s.kind === 'memory');
   const photoCount = photoSlides.reduce((sum, s) => sum + s.images, 0);
-  if (photoCount < 19) problems.push(`有照片没用上：只出现 ${photoCount} 张`);
+  // 照片有几张由 src/data/<slug>.js 决定，不再写死 19
+  const slug = await page.evaluate(() => document.documentElement.dataset.slug);
+  const album = (await import(new URL(`../src/data/${slug}.js`, import.meta.url).href).catch(() => null))
+    ?.default;
+  // 照片幕里最多用 5 张/节点（renderSlide 里 slice(0, 5)），
+  // 结尾那 5 张落款照片是另一套元素，不在这里数
+  const nodePhotos = (album?.chapters || []).reduce(
+    (sum, chapter) =>
+      sum + (chapter.nodes || []).reduce((n, node) => n + (node.images?.length ?? 0), 0),
+    0,
+  );
+  const slidesExpected = (album?.chapters || []).reduce(
+    (sum, chapter) =>
+      sum +
+      (chapter.nodes || []).reduce((n, node) => n + Math.min(node.images?.length ?? 0, 5), 0),
+    0,
+  );
+  if (slidesExpected && photoCount < slidesExpected) {
+    problems.push(`有照片没用上：数据里该出现 ${slidesExpected} 张，只出现 ${photoCount} 张`);
+  }
   const sunStart = walk[0]?.sun ?? 0;
   const sunEnd = walk[walk.length - 1]?.sun ?? 0;
   if (sunStart > 0.05) problems.push(`开头不该放晴 (--sun=${sunStart})`);
@@ -288,16 +316,16 @@ for (const viewport of VIEWPORTS) {
     if (afterReplay !== 0) problems.push(`"再看一遍"没有回到第一幕（到了 ${afterReplay}）`);
   }
 
-  /* ---------- 10. /yales/ 独立链接 ---------- */
-  await page.goto(`${URL_BASE}/yales/`, { waitUntil: 'load' });
+  /* ---------- 10. /<slug>/ 独立链接 ---------- */
+  await page.goto(`${URL_BASE}/${SLUG}/`, { waitUntil: 'load' });
   await page.waitForSelector('.cover__title');
   const direct = await page.evaluate(() => ({
     title: document.querySelector('.cover__title')?.textContent?.trim(),
     docTitle: document.title,
     bg: getComputedStyle(document.body).backgroundColor,
   }));
-  if (!direct.title) problems.push('/yales/ 独立链接没有渲染');
-  if (direct.bg !== 'rgb(10, 21, 38)') problems.push(`/yales/ 样式没加载 (${direct.bg})`);
+  if (!direct.title) problems.push(`/${SLUG}/ 独立链接没有渲染`);
+  if (!isDark(direct.bg)) problems.push(`/${SLUG}/ 样式没加载 (${direct.bg})`);
 
   /* ---------- 11. 根路径不能泄露内容 ---------- */
   await page.goto(`${URL_BASE}/`, { waitUntil: 'load' });
@@ -310,7 +338,7 @@ for (const viewport of VIEWPORTS) {
   if (!landing.title?.includes('专属链接')) problems.push(`根路径中转页不对: ${landing.title}`);
 
   /* ---------- 12. 滚动那套还能用（烟测） ---------- */
-  await page.goto(`${URL_BASE}/?u=yales&mode=scroll`, { waitUntil: 'load' });
+  await page.goto(`${URL_BASE}/?u=${SLUG}&mode=scroll`, { waitUntil: 'load' });
   await page.waitForSelector('.cover__title');
   await page.click('#open');
   await page.waitForTimeout(1200);
@@ -320,7 +348,9 @@ for (const viewport of VIEWPORTS) {
     timeline: Boolean(document.querySelector('.timeline__chapter')),
   }));
   if (scrollMode.nodes < 1) problems.push('滚动模式的节点没渲染出来');
-  if (scrollMode.photos < 19) problems.push(`滚动模式少了照片：${scrollMode.photos}`);
+  if (nodePhotos && scrollMode.photos < nodePhotos) {
+    problems.push(`滚动模式少了照片：${scrollMode.photos}/${nodePhotos}`);
+  }
   if (!scrollMode.timeline) problems.push('滚动模式没有时间线');
 
   report.push({

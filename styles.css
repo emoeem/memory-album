@@ -2263,3 +2263,281 @@ body.is-open .deck {
     will-change: auto;
   }
 }
+
+/* ------------------------------------------------------------------
+   深夜场（theme: 'screenlight'）：不追雨了，追剧。
+   底色是关灯的房间 + 一块屏幕的光；--sun 在这里不是"放晴"，
+   而是"从深夜一直看到天亮"。
+   ------------------------------------------------------------------ */
+[data-theme='screenlight'] body {
+  background-color: #06080d;
+  background-image:
+    radial-gradient(120% 78% at 64% 6%, rgba(126, 168, 214, 0.18), transparent 64%),
+    linear-gradient(180deg, #0a0d15 0%, #070a11 50%, #04060a 100%);
+}
+
+/* 房间：四角压暗，只留屏幕那一片亮 */
+.sky__room {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 118%, rgba(6, 10, 18, 0.92), transparent 72%),
+    radial-gradient(80% 60% at 50% 0%, rgba(30, 44, 66, 0.45), transparent 74%);
+}
+
+/* 屏幕光：冷白蓝。深夜里最亮，越接近结尾越淡 */
+.sky__screen {
+  position: absolute;
+  right: -8%;
+  top: 2%;
+  width: 80vw;
+  height: 80vh;
+  opacity: calc(.95 - var(--sun, 0) * .58);
+  transform: translate3d(0, calc(var(--sun, 0) * 3%), 0) scale(calc(1 - var(--sun, 0) * .12));
+  transition: opacity 1.8s var(--ease), transform 2.6s var(--ease);
+  background:
+    radial-gradient(46% 40% at 62% 34%, rgba(214, 234, 255, .32), rgba(150, 190, 235, .13) 42%, transparent 72%),
+    radial-gradient(80% 70% at 40% 62%, rgba(120, 165, 215, .17), transparent 76%);
+  filter: blur(28px);
+}
+
+/* 投影光柱：从右上斜下来的一道很宽的光 */
+.sky__beam {
+  position: absolute;
+  inset: -30% -10% auto 6%;
+  height: 132vh;
+  opacity: calc(.5 - var(--sun, 0) * .3);
+  transition: opacity 2s var(--ease);
+  background: linear-gradient(
+    108deg,
+    transparent 26%,
+    rgba(200, 226, 255, .1) 44%,
+    rgba(200, 226, 255, .04) 58%,
+    transparent 74%
+  );
+  filter: blur(30px);
+  mix-blend-mode: screen;
+}
+
+/* 天亮：窗口那边的晨光 */
+.sky__morning {
+  position: absolute;
+  inset: -20% -18% auto -18%;
+  height: 112vh;
+  opacity: calc(var(--sun, 0) * .82);
+  transition: opacity 2.2s var(--ease);
+  background:
+    radial-gradient(50% 40% at 22% 18%, rgba(255, 240, 214, .42), rgba(255, 214, 160, .14) 46%, transparent 74%),
+    radial-gradient(90% 70% at 70% 42%, rgba(180, 216, 246, .2), transparent 78%);
+  filter: blur(12px);
+}
+
+/* 老电视那点扫描线：淡到几乎看不见，只是让画面有点"信号" */
+.sky__scanlines {
+  position: absolute;
+  inset: 0;
+  opacity: .05;
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, .55) 0 1px,
+    transparent 1px 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+/* ---- 影院的几件"行头"：遮幅黑边、胶片齿孔、颗粒、放映机的呼吸 ---- */
+
+/* 上下遮幅：一看到这两条黑边，就知道是在"放片子" */
+.sky--screen::before,
+.sky--screen::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: clamp(28px, 6vh, 64px);
+  z-index: 3;
+  background-color: #000;
+  /* 齿孔就开在这两条黑边上 */
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, .16) 0 12px,
+    transparent 12px 34px
+  );
+  background-size: 100% 12px;
+  background-position: center;
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+
+.sky--screen::before { top: 0; }
+.sky--screen::after { bottom: 0; }
+
+/* 放映机的呼吸：屏幕光轻轻地忽明忽暗 */
+.sky__screen {
+  animation: projector-breathe 6.5s ease-in-out infinite;
+}
+
+@keyframes projector-breathe {
+  0%, 100% { filter: blur(28px) brightness(1); }
+  47% { filter: blur(28px) brightness(1.06); }
+  52% { filter: blur(28px) brightness(.97); }
+}
+
+/* 这主题里，云粒子当光晕、尘埃当屏幕光里的灰 */
+[data-theme='screenlight'] .sky__clouds {
+  top: -10%;
+  height: 70%;
+  filter: blur(44px) saturate(.85);
+}
+
+[data-theme='screenlight'] .sky__air {
+  top: 2%;
+  height: 78%;
+}
+
+[data-theme='screenlight'] .sky__horizon {
+  background: linear-gradient(180deg, transparent, rgba(124, 168, 214, .05) 40%, rgba(255, 214, 160, .07));
+}
+
+[data-theme='screenlight'] .sky__weather-dot {
+  background: #cfe6ff;
+  box-shadow: 0 0 12px rgba(207, 230, 255, .8);
+}
+
+/* 角标别被下遮幅吃掉 */
+[data-theme='screenlight'] .sky__weather {
+  z-index: 4;
+}
+
+/* 封面做成年电影票：右上角 ADMIT ONE，底下一条撕口虚线 */
+[data-theme='screenlight'] .cover__inner {
+  position: relative;
+  padding: clamp(26px, 6vw, 46px) clamp(22px, 6vw, 46px) clamp(20px, 4vw, 30px);
+  border: 1px solid rgba(174, 208, 240, .16);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(9, 13, 21, .7), rgba(5, 8, 14, .84));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, .55);
+}
+
+[data-theme='screenlight'] .cover__inner::before {
+  content: "ADMIT ONE";
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 9px;
+  letter-spacing: .3em;
+  color: var(--accent-soft);
+}
+
+[data-theme='screenlight'] .cover__hint {
+  width: 100%;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(174, 208, 240, .2);
+}
+
+/* 章节那行小字做成字幕条 */
+[data-theme='screenlight'] .chapter__tag {
+  display: inline-block;
+  padding: 4px 13px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, .55);
+  color: #f2f7ff;
+  letter-spacing: .26em;
+  text-indent: .26em;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .08);
+}
+
+/* 结尾：THE END */
+[data-theme='screenlight'] .ending__title::before {
+  content: "THE END";
+  display: block;
+  margin-bottom: 12px;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: .42em;
+  text-indent: .42em;
+  color: var(--ink-mute);
+}
+
+/* 胶片颗粒：细一点、动一点 */
+[data-theme='screenlight'] .sky__grain {
+  opacity: .07;
+  animation: film-grain 1.1s steps(4) infinite;
+}
+
+@keyframes film-grain {
+  0% { background-position: 0 0; }
+  25% { background-position: -14px 9px; }
+  50% { background-position: 11px -7px; }
+  75% { background-position: -6px -12px; }
+  100% { background-position: 0 0; }
+}
+
+/* 照片按"屏幕里放照片"来显示：整张都在，不裁切。
+   手机拍的都是竖图，硬裁会把人裁掉半个，宁可留一点letterbox。 */
+[data-theme='screenlight'] .memory__media--1 .memory__img,
+[data-theme='screenlight'] .memory__media--2 .memory__img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+[data-theme='screenlight'] .memory__media--1 .memory__img {
+  max-height: 60svh;
+}
+
+[data-theme='screenlight'] .memory__media--2 .memory__img {
+  max-height: 46svh;
+}
+
+[data-theme='screenlight'] .memory__media--3 .memory__img,
+[data-theme='screenlight'] .memory__media--4 .memory__img,
+[data-theme='screenlight'] .memory__media--5 .memory__img {
+  object-fit: contain;
+  background: rgba(5, 8, 14, 0.5);
+}
+
+[data-theme='screenlight'][data-weather='clear'] .sky__weather-dot {
+  background: #ffdf9f;
+  box-shadow: 0 0 14px rgba(255, 223, 159, .8);
+}
+
+/* 结尾那几张相纸：改成"随手摊在桌上的一叠"，几张都居中、不挑张数 */
+[data-theme='screenlight'] .ending__photos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  gap: 0;
+  padding: 6px 0;
+}
+
+[data-theme='screenlight'] .ending__photo {
+  position: static;
+  width: clamp(88px, 22vw, 132px);
+  height: clamp(112px, 28vw, 168px);
+  margin-inline: clamp(-14px, -2vw, -6px);
+}
+
+/* 片头字幕那种小字 */
+.chapter__tag {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: .32em;
+  text-indent: .32em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+}
+
+[data-theme='screenlight'] .cover__kicker {
+  font-size: 10px;
+  letter-spacing: .34em;
+  text-transform: uppercase;
+}
+
+[data-theme='screenlight'] .cover__weather {
+  color: var(--ink-mute);
+}

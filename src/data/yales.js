@@ -24,6 +24,9 @@ export default {
   // 本机想对比：链接后面加 ?mode=scroll
   presentation: 'slides',
 
+  // 天色主题：'weathering' = 《天气之子》那套雨夜 → 放晴
+  theme: 'weathering',
+
   // 每一幕停多久（毫秒）。想让她多看一会儿截图就把 image 调大。
   timing: {
     chapter: 3800,

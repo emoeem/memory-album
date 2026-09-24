@@ -158,5 +158,45 @@
         "size": "68224B"
       }
     ]
+  },
+  "wuling": {
+    "source": "/home/emo/Downloads/wuling",
+    "generatedAt": "2026-09-24T02:23:04.614Z",
+    "width": 1080,
+    "quality": 78,
+    "photos": [
+      {
+        "id": "p01",
+        "file": "p01.webp",
+        "original": "IMG_20260924_095101_084.jpg",
+        "width": "1080",
+        "height": "2402",
+        "size": "146602B"
+      },
+      {
+        "id": "p02",
+        "file": "p02.webp",
+        "original": "IMG_20260924_100615_994.jpg",
+        "width": "1080",
+        "height": "1920",
+        "size": "54240B"
+      },
+      {
+        "id": "p03",
+        "file": "p03.webp",
+        "original": "IMG_20260924_100617_631.jpg",
+        "width": "1080",
+        "height": "1440",
+        "size": "60898B"
+      },
+      {
+        "id": "p04",
+        "file": "p04.webp",
+        "original": "mmexport1790213042967.jpg",
+        "width": "1080",
+        "height": "1080",
+        "size": "47116B"
+      }
+    ]
   }
 }

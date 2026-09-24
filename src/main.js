@@ -74,6 +74,8 @@ async function boot() {
     const mod = await loader();
     const data = mod.default;
     document.documentElement.dataset.slug = data.slug || slug;
+    // 一个人的一份可以有自己的天色 / 主题（默认还是《天气之子》那套）
+    document.documentElement.dataset.theme = data.theme || 'weathering';
     // 挂到 window 上方便本机调试（也方便检查脚本读播放状态）
     // presentation 决定走哪套：'slides' 单屏自动播（默认） / 'scroll' 往下滚
     // 链接上加 ?mode=scroll 可以临时切回去看

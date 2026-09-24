@@ -20,4 +20,8 @@ export const photoSizes = {
   'photos/yales/p17.webp': [1080, 2376],
   'photos/yales/p18.webp': [1080, 2376],
   'photos/yales/p19.webp': [1080, 2376],
+  'photos/wuling/p01.webp': [1080, 2402],
+  'photos/wuling/p02.webp': [1080, 1920],
+  'photos/wuling/p03.webp': [1080, 1440],
+  'photos/wuling/p04.webp': [1080, 1080],
 };

@@ -42,13 +42,20 @@ export function richInline(text) {
 }
 
 /**
- * 雨夜 / 天色那一层。
- * 里面带 id 的那几个空 div 是 tsParticles 的宿主（见 weather.js），
- * 粒子负责雨、云、尘埃；剩下几层是纯 CSS 的天光、地平线和雾。
+ * 天空那一层。主题不同，画的东西不同：
+ *   weathering  《天气之子》那套：雨夜 → 放晴
+ *   screenlight 深夜场：关灯看屏幕 → 天慢慢亮
+ *
+ * 里面带 id 的空 div 是 tsParticles 的宿主（见 weather.js）。
+ * 宿主不存在的那几层，mountSky 会自动跳过 —— 所以两种主题共用同一套粒子代码。
  */
-export function buildSky() {
+export function buildSky(theme = 'weathering') {
+  return theme === 'screenlight' ? buildScreenSky(theme) : buildRainSky(theme);
+}
+
+function buildRainSky(theme) {
   return `
-  <div class="sky" aria-hidden="true">
+  <div class="sky" data-theme="${esc(theme)}" aria-hidden="true">
     <div class="sky__glow"></div>
     <div class="sky__clouds" id="sky-clouds"></div>
     <div class="sky__air" id="sky-air"></div>
@@ -71,8 +78,32 @@ export function buildSky() {
   </div>`;
 }
 
+/** 深夜场：关了灯的房间、一块屏幕的光、一层浮在光里的灰 */
+function buildScreenSky(theme) {
+  return `
+  <div class="sky sky--screen" data-theme="${esc(theme)}" aria-hidden="true">
+    <div class="sky__room"></div>
+    <div class="sky__clouds" id="sky-clouds"></div>
+    <div class="sky__air" id="sky-air"></div>
+    <div class="sky__screen"></div>
+    <div class="sky__beam"></div>
+    <div class="sky__morning"></div>
+    <div class="sky__scanlines"></div>
+    <div class="sky__horizon"></div>
+    <div class="sky__weather" aria-hidden="true">
+      <span class="sky__weather-dot"></span>
+      <span class="sky__weather-label">LIGHTS OFF</span>
+      <span class="sky__weather-value">熄灯</span>
+    </div>
+    <div class="sky__grain"></div>
+  </div>`;
+}
+
 export function buildCover(data) {
   const cover = data.cover || {};
+  // 封面那行小字：默认还是《天气之子》。
+  // 换主题的人（比如吴玲那份）可以在 cover.line 里写自己的，写空字符串就不显示。
+  const line = cover.line ?? '天気の子 · Weathering With You';
   return `
   <div class="cover" id="cover">
     <div class="cover__glow" aria-hidden="true"></div>
@@ -80,11 +111,15 @@ export function buildCover(data) {
       ${cover.kicker ? `<p class="cover__kicker">${esc(cover.kicker)}</p>` : ''}
       <h1 class="cover__title">${esc(cover.title || data.name || '')}</h1>
       ${cover.subtitle ? `<p class="cover__subtitle">${esc(cover.subtitle)}</p>` : ''}
-      <p class="cover__weather" aria-hidden="true">
+      ${
+        line
+          ? `<p class="cover__weather" aria-hidden="true">
         <span class="cover__weather-line"></span>
-        <span>天気の子 · Weathering With You</span>
+        <span>${esc(line)}</span>
         <span class="cover__weather-line"></span>
-      </p>
+      </p>`
+          : ''
+      }
       <button class="cover__open" id="open" type="button">
         <span class="cover__open-ring" aria-hidden="true"></span>
         <span>${esc(cover.openLabel || '打开')}</span>

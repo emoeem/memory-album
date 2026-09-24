@@ -29,7 +29,7 @@ export function mount(app, data, ROOT) {
 
   app.dataset.state = 'ready';
   app.innerHTML =
-    buildSky() +
+    buildSky(data.theme) +
     buildCover(data) +
     buildPage(data, chapters, asset) +
     buildTopbar() +
@@ -335,6 +335,7 @@ function buildPage(data, chapters, asset) {
 function head(chapter, chapterIndex) {
   return `
     <header class="chapter__head reveal motion">
+      ${chapter.tag ? `<p class="chapter__tag">${esc(chapter.tag)}</p>` : ''}
       <p class="chapter__index">${String(chapterIndex + 1).padStart(2, '0')}</p>
       ${chapter.date ? `<p class="chapter__date">${esc(chapter.date)}</p>` : ''}
       <h2 class="chapter__label">${esc(chapter.label || '')}</h2>

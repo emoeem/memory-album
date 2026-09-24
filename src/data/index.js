@@ -9,4 +9,5 @@
  */
 export const albums = {
   yales: () => import('./yales.js'),
+  wuling: () => import('./wuling.js'),
 };

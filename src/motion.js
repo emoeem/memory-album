@@ -120,7 +120,8 @@ const PLAN = [
   },
   {
     // 章节序号、日期、标题这类标题块
-    selector: '.chapter__index, .slide__date, .slide__title, .slide__head, .slide__meta',
+    selector:
+      '.chapter__tag, .chapter__index, .slide__date, .slide__title, .slide__head, .slide__meta',
     keys: () => ({
       opacity: [0, 1],
       y: [22, 0],

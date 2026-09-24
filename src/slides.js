@@ -71,7 +71,7 @@ export function mountSlides(app, data, ROOT) {
 
   app.dataset.state = 'ready';
   app.innerHTML =
-    buildSky() +
+    buildSky(data.theme) +
     buildCover(data) +
     buildStage(slides, asset) +
     buildDeck(audio, total) +
@@ -417,6 +417,7 @@ function renderSlide(slide, asset, i) {
       return `
       <section ${head}>
         <div class="slide__inner slide__inner--center">
+          ${slide.chapter.tag ? `<p class="chapter__tag">${esc(slide.chapter.tag)}</p>` : ''}
           <p class="chapter__index">${String(slide.no || 1).padStart(2, '0')}</p>
           ${slide.chapter.date ? `<p class="slide__date">${esc(slide.chapter.date)}</p>` : ''}
           <h2 class="slide__title">${esc(slide.chapter.label || '')}</h2>

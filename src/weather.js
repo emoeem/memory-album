@@ -27,6 +27,16 @@ const LABELS = {
   clear: ['CLEAR', '放晴'],
 };
 
+/** 深夜场那套主题不叫"雨中/放晴"，是影院的场次：熄灯 → 放映 → 片尾 → 早场 */
+const SCREEN_LABELS = {
+  rain: ['LIGHTS OFF', '熄灯'],
+  cloud: ['NOW SHOWING', '放映中'],
+  sunbreak: ['THE END', '片尾'],
+  clear: ['MORNING SHOW', '早场'],
+};
+
+const currentTheme = () => document.documentElement.dataset.theme || 'weathering';
+
 const clamp01 = (value) => Math.min(1, Math.max(0, Number(value) || 0));
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -57,6 +67,8 @@ function measure(host) {
   const height = Math.round(rect?.height || window.innerHeight);
   const small = Math.min(window.innerWidth, window.innerHeight) < 620;
   const reduced = reducedMotion();
+  // 主题会影响粒子的颜色和速度：深夜场是"屏幕光"，不是雨夜的云
+  const screen = (document.documentElement.dataset.theme || 'weathering') === 'screenlight';
   // 一律按 1 倍像素画：雨丝本来就是虚的，1 倍看不出来，
   // 但视网膜屏上能省掉 4 倍的填充率 —— 桌面端开 2 倍时，
   // 一层雨就是 2880×1800 的画布，几层叠起来会把首帧拖慢。
@@ -69,6 +81,7 @@ function measure(host) {
     retina,
     small,
     reduced,
+    screen,
     fps: reduced ? 20 : small ? 36 : 38,
     // 云和尘埃都铺着一层 CSS blur，重画一次就要重新糊一次，
     // 所以给它们低一点的帧率 —— 反正本来就飘得很慢。
@@ -136,26 +149,36 @@ function rainOptions(env, tune) {
 /** 云团：大颗粒 + CSS blur(30px) ⇒ 软绵绵的一团，不是几条渐变色带 */
 function cloudOptions(env) {
   const scale = env.reduced ? 0.4 : env.small ? 0.55 : 1;
+  // 深夜场里，这层不是云，是屏幕的那团光晕：更大、更冷、更慢
+  const screen = env.screen;
   return {
     fullScreen: { enable: false },
     fpsLimit: env.calmFps,
     detectRetina: env.retina,
     particles: {
-      number: { value: countValue(11, env, scale), density },
+      number: { value: countValue(screen ? 9 : 11, env, scale), density },
       shape: { type: 'circle' },
-      size: { value: { min: env.small ? 70 : 120, max: env.small ? 150 : 260 } },
+      size: {
+        value: screen
+          ? { min: env.small ? 90 : 150, max: env.small ? 180 : 300 }
+          : { min: env.small ? 70 : 120, max: env.small ? 150 : 260 },
+      },
       paint: {
         fill: {
           enable: true,
-          opacity: { min: 0.07, max: 0.2 },
-          color: { value: ['#8fb6dd', '#a9cae9', '#7ea6cf'] },
+          opacity: screen ? { min: 0.06, max: 0.16 } : { min: 0.07, max: 0.2 },
+          color: {
+            value: screen
+              ? ['#dce9f8', '#c6dcf2', '#a9c8e4']
+              : ['#8fb6dd', '#a9cae9', '#7ea6cf'],
+          },
         },
         stroke: { width: 0 },
       },
       move: {
         enable: true,
         direction: 0,
-        speed: { min: 0.18, max: 0.55 },
+        speed: screen ? { min: 0.1, max: 0.36 } : { min: 0.18, max: 0.55 },
         straight: true,
         outModes: { default: 'out' },
       },
@@ -166,6 +189,7 @@ function cloudOptions(env) {
 /** 空气里的尘埃：放晴时顺着光慢慢往上飘，给天光一点颗粒感 */
 function airOptions(env) {
   const scale = env.reduced ? 0.35 : env.small ? 0.5 : 1;
+  const screen = env.screen;
   return {
     fullScreen: { enable: false },
     fpsLimit: env.calmFps,
@@ -177,15 +201,20 @@ function airOptions(env) {
       paint: {
         fill: {
           enable: true,
-          opacity: { min: 0.18, max: 0.5 },
-          color: { value: ['#eaf5ff', '#ffeec9', '#cfe6ff'] },
+          opacity: screen ? { min: 0.2, max: 0.55 } : { min: 0.18, max: 0.5 },
+          color: {
+            value: screen
+              ? ['#eaf3ff', '#d7e8fb', '#c9dcf0']
+              : ['#eaf5ff', '#ffeec9', '#cfe6ff'],
+          },
         },
         stroke: { width: 0 },
       },
       move: {
         enable: true,
-        direction: 288,
-        speed: { min: 0.12, max: 0.42 },
+        // 深夜场里，灰是顺着屏幕光往上浮的
+        direction: screen ? 270 : 288,
+        speed: screen ? { min: 0.08, max: 0.3 } : { min: 0.12, max: 0.42 },
         straight: true,
         outModes: { default: 'out' },
       },
@@ -271,7 +300,7 @@ export function setSun(value) {
     }
   }
 
-  const [code, text] = LABELS[phase];
+  const [code, text] = (currentTheme() === 'screenlight' ? SCREEN_LABELS : LABELS)[phase];
   const labelEl = document.querySelector('.sky__weather-label');
   const valueEl = document.querySelector('.sky__weather-value');
   if (labelEl) labelEl.textContent = code;
@@ -280,63 +309,82 @@ export function setSun(value) {
   return phase;
 }
 
+/**
+ * 引擎上并没有 `getContainer()`（v4 只有 items / item(index)），
+ * 所以按 id 从 items 里翻一个出来。找不到就返回 undefined，由调用方兜住。
+ */
+const containerById = (id) => tsParticles.items.find((item) => item.id?.description === id);
+
 /** 挂载封面雨幕的 hover 加速：鼠标在封面区域时，两层雨速度临时 ×1.8 */
 export function mountRainHover() {
   const cover = document.querySelector('.cover');
   if (!cover) return;
-  const roots = [document.getElementById('sky-rain-heavy'), document.getElementById('sky-rain-light')];
-  const rootsWithId = roots.map((el, i) => ({ el, id: i === 0 ? 'sky-rain-heavy' : 'sky-rain-light' })).filter(r => r.el);
+  const ids = ['sky-rain-heavy', 'sky-rain-light'];
+  const baseSpeeds = new Map();
 
+  // 速度是原地改 options 里的 [min, max]；先记一份原值，
+  // 不然来回 hover 会把倍数越乘越大
   const setSpeed = (multiplier) => {
-    rootsWithId.forEach(({ id }) => {
-      const container = tsParticles.getContainer(id);
-      if (!container) return;
-      const opts = container.options.particles.move.speed;
-      if (Array.isArray(opts) && opts.length >= 2) {
-        opts[0] = opts[0] * multiplier;
-        opts[1] = opts[1] * multiplier;
-        container.set({ fpsLimit: container.options.fpsLimit });
+    try {
+      for (const id of ids) {
+        const speed = containerById(id)?.options?.particles?.move?.speed;
+        if (!Array.isArray(speed) || speed.length < 2) continue;
+        if (!baseSpeeds.has(id)) baseSpeeds.set(id, [speed[0], speed[1]]);
+        const base = baseSpeeds.get(id);
+        speed[0] = base[0] * multiplier;
+        speed[1] = base[1] * multiplier;
       }
-    });
+    } catch (error) {
+      // 这只是封面上的小把戏，坏了也不能影响页面
+    }
   };
 
   cover.addEventListener('mouseenter', () => setSpeed(1.8));
-  cover.addEventListener('mouseleave', () => setSpeed(1 / 1.8));
+  cover.addEventListener('mouseleave', () => setSpeed(1));
 }
 
 /** 每次翻页触发一次雨帘涟漪：在屏幕中央生成一圈缓缓扩开然后消失的大雨滴 */
 export function triggerRainRipple() {
-  const heavy = tsParticles.getContainer('sky-rain-heavy');
-  const light = tsParticles.getContainer('sky-rain-light');
-  const targets = [heavy, light].filter(Boolean);
-  if (!targets.length) return;
+  try {
+    const targets = [containerById('sky-rain-heavy'), containerById('sky-rain-light')].filter(Boolean);
+    if (!targets.length) return;
 
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
 
-  targets.forEach((container) => {
-    for (let i = 0; i < 8; i += 1) {
-      const angle = (Math.PI * 2 * i) / 8;
-      const r = 40 + Math.random() * 60;
-      container.particles.addParticle({
-        x: w / 2 + Math.cos(angle) * r,
-        y: h / 2 + Math.sin(angle) * r,
-        options: {
-          shape: { type: 'circle' },
-          size: { value: 2 + Math.random() * 3 },
-          paint: { fill: { enable: true, opacity: { value: 0.55 }, color: { value: '#c6e4fb' } }, stroke: { width: 0 } },
-          move: {
-            enable: true,
-            direction: angle * (180 / Math.PI),
-            speed: { value: 4 + Math.random() * 3 },
-            outModes: { default: 'destroy' },
-            gravity: { enable: true, acceleration: 0.3, maxSpeed: 12 },
+    for (const container of targets) {
+      for (let i = 0; i < 8; i += 1) {
+        const angle = (Math.PI * 2 * i) / 8;
+        const radius = 40 + Math.random() * 60;
+        // 注意签名是 addParticle(position, options, group, initializer)，
+        // 位置和选项是两个参数，不是塞在一个对象里
+        container.particles.addParticle(
+          {
+            x: w / 2 + Math.cos(angle) * radius,
+            y: h / 2 + Math.sin(angle) * radius,
           },
-          life: { duration: { value: 1.2 }, count: 1 },
-        },
-      });
+          {
+            shape: { type: 'circle' },
+            size: { value: 2 + Math.random() * 3 },
+            paint: {
+              fill: { enable: true, opacity: { value: 0.55 }, color: { value: '#c6e4fb' } },
+              stroke: { width: 0 },
+            },
+            move: {
+              enable: true,
+              direction: angle * (180 / Math.PI),
+              speed: { min: 4, max: 7 },
+              outModes: { default: 'destroy' },
+              gravity: { enable: true, acceleration: 0.3, maxSpeed: 12 },
+            },
+            life: { duration: { value: 1.2 }, count: 1 },
+          },
+        );
+      }
     }
-  });
+  } catch (error) {
+    // 涟漪只是锦上添花：真出问题也不能挡住翻页
+  }
 }
 
 /** 挂天气层。重复调用只会挂一次；挂好之前 setSun 也可以先调，最后会补上。 */
