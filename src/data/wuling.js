@@ -35,7 +35,7 @@ export default {
   cover: {
     kicker: '深夜场 · SEASON ONE',
     title: '吴玲',
-    subtitle: '从你回我的那声「yes」开始，到把国赛走完。这一季不长，但有六集。',
+    subtitle: '从你回我的那声「yes」开始，到把国赛走完。这一季不长，慢慢看。',
     openLabel: '打开',
     hint: '建议戴上耳机 · 像追剧一样看完',
     line: '今晚照旧：关灯，开一集',
