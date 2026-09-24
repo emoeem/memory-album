@@ -1808,7 +1808,7 @@ body.mode-slides {
 @media (max-width: 700px) {
   .slide {
     padding: calc(env(safe-area-inset-top, 0px) + 34px) var(--gutter)
-      calc(env(safe-area-inset-bottom, 0px) + 148px);
+      calc(env(safe-area-inset-bottom, 0px) + 164px);
   }
 
   .slide__inner {
@@ -1817,6 +1817,7 @@ body.mode-slides {
 
   .deck {
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    background: linear-gradient(0deg, rgba(10, 21, 38, 0.9), rgba(10, 21, 38, 0.02) 88%, transparent);
   }
 
   /* 单张照片：手机上别让"图 + 一行日期"顶出一屏，不然日期要滚一下才看得到 */

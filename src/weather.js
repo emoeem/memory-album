@@ -313,7 +313,8 @@ export function setSun(value) {
  * 引擎上并没有 `getContainer()`（v4 只有 items / item(index)），
  * 所以按 id 从 items 里翻一个出来。找不到就返回 undefined，由调用方兜住。
  */
-const containerById = (id) => tsParticles.items.find((item) => item.id?.description === id);
+const containerById = (id) =>
+  tsParticles.items.find((item) => item.id === id || item.id?.description === id);
 
 /** 挂载封面雨幕的 hover 加速：鼠标在封面区域时，两层雨速度临时 ×1.8 */
 export function mountRainHover() {
